@@ -1,0 +1,59 @@
+name: DevMate AI CI
+
+on:
+	push:
+		branches: ["master", "main"]
+	pull_request:
+		branches: ["master", "main"]
+
+jobs:
+	backend:
+		runs-on: ubuntu-latest
+		defaults:
+			run:
+				working-directory: backend
+		steps:
+			- name: Checkout
+				uses: actions/checkout@v4
+
+			- name: Setup Node
+				uses: actions/setup-node@v4
+				with:
+					node-version: 20
+					cache: npm
+					cache-dependency-path: backend/package-lock.json
+
+			- name: Install dependencies
+				run: npm ci
+
+			- name: Generate Prisma client
+				run: npx prisma generate
+				env:
+					DATABASE_URL: postgresql://devmate:devmate_password@localhost:5432/devmate_ai?schema=public
+
+			- name: Build backend
+				run: npm run build
+
+	frontend:
+		runs-on: ubuntu-latest
+		defaults:
+			run:
+				working-directory: frontend
+		steps:
+			- name: Checkout
+				uses: actions/checkout@v4
+
+			- name: Setup Node
+				uses: actions/setup-node@v4
+				with:
+					node-version: 20
+					cache: npm
+					cache-dependency-path: frontend/package-lock.json
+
+			- name: Install dependencies
+				run: npm ci
+
+			- name: Build frontend
+				run: npm run build
+				env:
+					NEXT_PUBLIC_API_URL: http://localhost:4000
