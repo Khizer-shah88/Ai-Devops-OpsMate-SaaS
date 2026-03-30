@@ -1,5 +1,5 @@
-import axios from "axios";
-import { getToken } from "./auth";
+import axios, { AxiosError } from "axios";
+import { clearToken, getToken } from "./auth";
 import {
   AuthResponse,
   CicdResult,
@@ -7,6 +7,14 @@ import {
   RequestRecord,
   ReviewResult,
   UsageStats,
+  AnalysisResult,
+  DevopsProject,
+  GeneratedFile,
+  GithubRepo,
+  GithubStatus,
+  OnboardRepoResult,
+  LatestBundleResponse,
+  RepoReadinessResult,
 } from "./types";
 import type {
   CicdResult as RichCicdResult,
@@ -15,6 +23,8 @@ import type {
   HistoryItem,
   UsageStats as DashboardUsageStats,
 } from "@/types";
+
+const USER_STORAGE_KEY = "devmate_user";
 
 interface RegisterPayload {
   name?: string;
@@ -34,6 +44,18 @@ const api = axios.create({
   },
 });
 
+const normalizeErrorMessage = (error: AxiosError) => {
+  const payload = error.response?.data as any;
+
+  if (typeof payload === "string") return payload;
+  if (payload?.message) {
+    if (Array.isArray(payload.message)) return payload.message.join(", ");
+    return payload.message;
+  }
+
+  return error.message || "Request failed";
+};
+
 api.interceptors.request.use((config) => {
   const token = getToken();
   if (token) {
@@ -41,6 +63,23 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      // Clear stale session and force re-authentication when the backend rejects the token.
+      clearToken();
+      window.localStorage.removeItem(USER_STORAGE_KEY);
+
+      if (!window.location.pathname.startsWith("/auth")) {
+        window.location.href = "/auth";
+      }
+    }
+
+    return Promise.reject(new Error(normalizeErrorMessage(error)));
+  }
+);
 
 export const apiClient = {
   async register(email: string, password: string): Promise<AuthResponse> {
@@ -84,6 +123,111 @@ export const apiClient = {
 
   async getStats(): Promise<UsageStats> {
     const { data } = await api.get<UsageStats>("/history?stats=true");
+    return data;
+  },
+
+  async deleteHistoryItem(id: string): Promise<{ deleted: boolean }> {
+    const { data } = await api.delete<{ deleted: boolean }>(`/history/${id}`);
+    return data;
+  },
+
+  async clearHistory(): Promise<{ deletedCount: number }> {
+    const { data } = await api.delete<{ deletedCount: number }>("/history");
+    return data;
+  },
+
+  async analyzePackage(payload: {
+    packageJson: string;
+    projectName?: string;
+    repoUrl?: string;
+    cloudTarget?: string;
+    sourceType?: string;
+  }): Promise<{ project: DevopsProject; analysis: AnalysisResult; versionId: string }> {
+    const { data } = await api.post<{ project: DevopsProject; analysis: AnalysisResult; versionId: string }>("/devops/analyze-package", payload);
+    return data;
+  },
+
+  async analyzeRepo(payload: {
+    repoUrl: string;
+    branch?: string;
+    githubToken?: string;
+    cloudTarget?: string;
+    projectName?: string;
+  }): Promise<{ project: DevopsProject; analysis: AnalysisResult; versionId: string }> {
+    const { data } = await api.post<{ project: DevopsProject; analysis: AnalysisResult; versionId: string }>("/devops/analyze-repo", payload);
+    return data;
+  },
+
+  async readinessScan(payload: {
+    repoUrl: string;
+    branch?: string;
+    githubToken?: string;
+    projectName?: string;
+  }): Promise<RepoReadinessResult> {
+    const { data } = await api.post<RepoReadinessResult>("/devops/readiness-scan", payload);
+    return data;
+  },
+
+  async generateInfra(payload: any): Promise<{ versionId: string; files: GeneratedFile[]; costEstimate: string; securityFindings: string }> {
+    const { data } = await api.post<{ versionId: string; files: GeneratedFile[]; costEstimate: string; securityFindings: string }>("/devops/generate-infra", payload);
+    return data;
+  },
+
+  async improveConfig(payload: { projectVersionId: string; filePath: string; currentContent: string; userRequest?: string; cloudTarget?: string }): Promise<{ content: string }> {
+    const { data } = await api.post<{ content: string }>("/devops/improve-config", payload);
+    return data;
+  },
+
+  async analyzeLog(payload: { log: string; context?: string }) {
+    const { data } = await api.post("/devops/log-analyzer", payload);
+    return data;
+  },
+
+  async listProjects(): Promise<DevopsProject[]> {
+    const { data } = await api.get<DevopsProject[]>("/devops/projects");
+    return data;
+  },
+
+  async getLatestGeneratedBundle(): Promise<LatestBundleResponse> {
+    const { data } = await api.get<LatestBundleResponse>("/devops/generated/latest");
+    return data;
+  },
+
+  async githubStatus(): Promise<GithubStatus> {
+    const { data } = await api.get<GithubStatus>("/devops/github/status");
+    return data;
+  },
+
+  async getGithubOauthUrl(redirectPath?: string): Promise<{ url: string }> {
+    const suffix = redirectPath ? `?redirectPath=${encodeURIComponent(redirectPath)}` : "";
+    const { data } = await api.get<{ url: string }>(`/devops/github/oauth/start${suffix}`);
+    return data;
+  },
+
+  async connectGithub(payload: { accessToken: string }): Promise<GithubStatus> {
+    const { data } = await api.post<GithubStatus>("/devops/github/connect", payload);
+    return data;
+  },
+
+  async disconnectGithub(): Promise<{ disconnected: boolean }> {
+    const { data } = await api.delete<{ disconnected: boolean }>("/devops/github/connect");
+    return data;
+  },
+
+  async listGithubRepos(limit = 20): Promise<{ repos: GithubRepo[] }> {
+    const { data } = await api.get<{ repos: GithubRepo[] }>(`/devops/github/repos?limit=${limit}`);
+    return data;
+  },
+
+  async onboardRepo(payload: {
+    repoUrl: string;
+    branch?: string;
+    projectName?: string;
+    githubToken?: string;
+    cloudTarget?: string;
+    autoGenerateInfra?: boolean;
+  }): Promise<OnboardRepoResult> {
+    const { data } = await api.post<OnboardRepoResult>("/devops/onboard-repo", payload);
     return data;
   },
 };
@@ -182,4 +326,29 @@ export const historyApi = {
       data: mappedHistory,
     };
   },
+
+  async deleteOne(id: string): Promise<{ deleted: boolean }> {
+    return apiClient.deleteHistoryItem(id);
+  },
+
+  async clearAll(): Promise<{ deletedCount: number }> {
+    return apiClient.clearHistory();
+  },
+};
+
+export const devopsApi = {
+  analyzePackage: apiClient.analyzePackage,
+  analyzeRepo: apiClient.analyzeRepo,
+  readinessScan: apiClient.readinessScan,
+  onboardRepo: apiClient.onboardRepo,
+  generateInfra: apiClient.generateInfra,
+  improveConfig: apiClient.improveConfig,
+  analyzeLog: apiClient.analyzeLog,
+  listProjects: apiClient.listProjects,
+  getLatestGeneratedBundle: apiClient.getLatestGeneratedBundle,
+  githubStatus: apiClient.githubStatus,
+  getGithubOauthUrl: apiClient.getGithubOauthUrl,
+  connectGithub: apiClient.connectGithub,
+  disconnectGithub: apiClient.disconnectGithub,
+  listGithubRepos: apiClient.listGithubRepos,
 };

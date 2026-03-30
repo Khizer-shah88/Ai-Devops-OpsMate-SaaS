@@ -6,6 +6,8 @@ import {
  Bug, Play, XCircle, AlertTriangle,
  Lightbulb, Wrench, BookOpen, ClipboardPaste,
  ChevronRight,
+ Save,
+ Trash2,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -44,6 +46,9 @@ const SAMPLES = [
  at getCallback (/app/node_modules/jsonwebtoken/verify.js:196:14)`,
  },
 ];
+
+const DEBUG_STATE_KEY = 'devmate_state_DEBUG';
+const DEBUG_HISTORY_KEY = 'devmate_history_DEBUG';
 
 // ─── Fix Step Item ────────────────────────────────────────────────────────────
 
@@ -145,6 +150,7 @@ export default function DebugPage() {
  const [result, setResult] = useState<DebugResult | null>(null);
  const [error, setError] = useState<string | null>(null);
  const [charCount, setCharCount] = useState(0);
+ const [historyNotice, setHistoryNotice] = useState<string | null>(null);
 
  const handleChange = (val: string) => {
  setErrorLog(val);
@@ -158,7 +164,7 @@ export default function DebugPage() {
  };
 
    useEffect(() => {
-    const saved = localStorage.getItem('devmate_state_DEBUG');
+    const saved = localStorage.getItem(DEBUG_STATE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -170,7 +176,7 @@ export default function DebugPage() {
 
   useEffect(() => {
     if (errorLog || result) {
-      localStorage.setItem('devmate_state_DEBUG', JSON.stringify({ errorLog, result }));
+      localStorage.setItem(DEBUG_STATE_KEY, JSON.stringify({ errorLog, result }));
     }
   }, [errorLog, result]);
 
@@ -188,6 +194,34 @@ export default function DebugPage() {
  } finally {
  setLoading(false);
  }
+ };
+
+ const saveHistory = () => {
+   try {
+     const raw = localStorage.getItem(DEBUG_HISTORY_KEY);
+     const existing = raw ? (JSON.parse(raw) as Array<Record<string, unknown>>) : [];
+     const next = [
+       {
+         createdAt: new Date().toISOString(),
+         errorLog,
+         result,
+       },
+       ...existing,
+     ].slice(0, 20);
+     localStorage.setItem(DEBUG_HISTORY_KEY, JSON.stringify(next));
+     setHistoryNotice('Saved to history.');
+     window.setTimeout(() => setHistoryNotice(null), 1800);
+   } catch {
+     setHistoryNotice('Unable to save history.');
+   }
+ };
+
+ const clearCurrent = () => {
+   setErrorLog('');
+   setCharCount(0);
+   setResult(null);
+   setError(null);
+   localStorage.removeItem(DEBUG_STATE_KEY);
  };
 
  return (
@@ -275,6 +309,29 @@ TypeError: Cannot read properties of undefined (reading 'map')
  )}
  </button>
  </form>
+
+ <div className="grid grid-cols-2 gap-2">
+ <button
+ type="button"
+ onClick={saveHistory}
+ disabled={loading || !errorLog.trim()}
+ className="h-10 rounded-xl text-[13px] font-semibold border border-brand/30 text-brand hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
+ >
+ <Save className="w-4 h-4" /> Save History
+ </button>
+ <button
+ type="button"
+ onClick={clearCurrent}
+ disabled={loading}
+ className="h-10 rounded-xl text-[13px] font-semibold border border-border text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
+ >
+ <Trash2 className="w-4 h-4" /> Clear
+ </button>
+ </div>
+
+ {historyNotice && (
+ <p className="text-[12px] text-brand">{historyNotice}</p>
+ )}
 
  {error && (
  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-red-500/10 border border-red-500/20 shadow-sm">

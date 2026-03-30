@@ -13,11 +13,14 @@ RUN npm run build
 
 FROM base AS runner
 ENV NODE_ENV=production
-COPY package*.json ./
-RUN npm ci --omit=dev
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.ts ./next.config.ts
-COPY --from=builder /app/node_modules ./node_modules
+RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
+
+COPY --from=builder --chown=nextjs:nextjs /app/public ./public
+COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
+
+USER nextjs
+
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=5 CMD wget -qO- http://localhost:3000 || exit 1
+CMD ["node", "server.js"]

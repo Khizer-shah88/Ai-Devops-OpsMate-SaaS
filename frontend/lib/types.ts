@@ -2,6 +2,9 @@ export interface User {
   id: string;
   name?: string;
   email: string;
+  githubUsername?: string | null;
+  githubAvatarUrl?: string | null;
+  githubConnectedAt?: string | null;
   createdAt: string;
 }
 
@@ -49,4 +52,143 @@ export interface UsageStats {
     debug: number;
     cicd: number;
   };
+}
+
+export type CloudTarget = 'ecs' | 'eks' | 'vercel' | 'digitalocean' | 'local';
+
+export interface DetectedService {
+  name: string;
+  kind: 'frontend' | 'backend' | 'database' | 'worker' | 'unknown';
+  framework?: string;
+  language?: string;
+  portHint?: number;
+  envHints?: string[];
+}
+
+export interface AnalysisResult {
+  packageManager: 'npm' | 'yarn' | 'pnpm' | 'bun' | 'unknown';
+  services: DetectedService[];
+  dependencies: string[];
+  devDependencies: string[];
+  notes?: string[];
+}
+
+export interface GeneratedFile {
+  id: string;
+  projectVersionId: string;
+  path: string;
+  content: string;
+  kind?:
+    | 'dockerfile'
+    | 'dockerCompose'
+    | 'githubActions'
+    | 'kubernetes'
+    | 'env'
+    | 'readme'
+    | 'cost'
+    | 'security'
+    | null;
+  createdAt: string;
+}
+
+export interface ProjectVersion {
+  id: string;
+  projectId: string;
+  label?: string | null;
+  cloudTarget?: CloudTarget | null;
+  analysis: AnalysisResult;
+  generatedAt: string;
+  files: GeneratedFile[];
+}
+
+export interface DevopsProject {
+  id: string;
+  name: string;
+  repoUrl?: string | null;
+  cloudTarget?: CloudTarget | null;
+  summary?: string | null;
+  detectedStack?: AnalysisResult;
+  createdAt: string;
+  updatedAt: string;
+  versions?: ProjectVersion[];
+}
+
+export interface RepoHealthCheck {
+  id: string;
+  title: string;
+  status: 'pass' | 'warn';
+  details: string;
+  fix: string;
+}
+
+export interface SecretRisk {
+  severity: 'low' | 'medium' | 'high';
+  path: string;
+  finding: string;
+  recommendation: string;
+}
+
+export interface RepoReadinessResult {
+  analysis: AnalysisResult;
+  readinessScore: number;
+  maturity: 'production-ready' | 'staging-ready' | 'development-ready' | 'early';
+  checks: RepoHealthCheck[];
+  secretRisks: SecretRisk[];
+}
+
+export interface GithubStatus {
+  connected: boolean;
+  username: string | null;
+  avatarUrl: string | null;
+  connectedAt: string | null;
+}
+
+export interface GithubRepo {
+  id: number;
+  name: string;
+  fullName: string;
+  private: boolean;
+  htmlUrl: string;
+  defaultBranch: string;
+  updatedAt: string;
+  language: string | null;
+}
+
+export interface RepoInsights {
+  owner: string;
+  repo: string;
+  defaultBranch: string;
+  stars: number;
+  openIssues: number;
+  languages: string[];
+  hasCi: boolean;
+  hasDocker: boolean;
+  hasKubernetes: boolean;
+  hasTerraform: boolean;
+  healthScore: number;
+  checks: RepoHealthCheck[];
+}
+
+export interface OnboardRepoResult {
+  project: DevopsProject;
+  analysis: AnalysisResult;
+  versionId: string;
+  repoInsights: RepoInsights;
+  autoFixPlan: string[];
+  rolloutGuidance: string;
+  generatedInfra: {
+    versionId: string;
+    files: GeneratedFile[];
+    costEstimate: string;
+    securityFindings: string;
+  } | null;
+}
+
+export interface LatestBundleResponse {
+  projectId?: string;
+  projectName?: string;
+  versionId?: string;
+  analysis?: AnalysisResult;
+  cloudTarget?: CloudTarget | null;
+  files: GeneratedFile[];
 }

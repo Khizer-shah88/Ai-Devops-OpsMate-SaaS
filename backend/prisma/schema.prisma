@@ -12,12 +12,48 @@ enum RequestType {
   cicd
 }
 
+enum SourceType {
+  packageJson
+  github
+  repoUrl
+}
+
+enum CloudTarget {
+  ecs
+  eks
+  vercel
+  digitalocean
+  local
+}
+
+enum FileKind {
+  dockerfile
+  dockerCompose
+  githubActions
+  kubernetes
+  env
+  readme
+  cost
+  security
+}
+
+enum ChatRole {
+  user
+  assistant
+  system
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   password  String
+  githubUsername    String?
+  githubAvatarUrl   String?
+  githubTokenEnc    String?
+  githubConnectedAt DateTime?
   createdAt DateTime @default(now())
   requests  Request[]
+  projects  Project[]
 }
 
 model Request {
@@ -29,4 +65,76 @@ model Request {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt], name: "request_user_created_idx")
+}
+
+model Project {
+  id          String          @id @default(cuid())
+  userId      String
+  name        String
+  repoUrl     String?
+  sourceType  SourceType
+  cloudTarget CloudTarget?
+  summary     String?
+  detectedStack Json?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versions ProjectVersion[]
+  chats    ChatSession[]
+
+  @@index([userId, updatedAt], name: "project_user_updated_idx")
+}
+
+model ProjectVersion {
+  id            String        @id @default(cuid())
+  projectId     String
+  label         String?
+  cloudTarget   CloudTarget?
+  analysis      Json
+  generatedAt   DateTime      @default(now())
+  files         GeneratedFile[]
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, generatedAt], name: "project_version_project_generated_idx")
+}
+
+model GeneratedFile {
+  id               String    @id @default(cuid())
+  projectVersionId String
+  path             String
+  content          String
+  kind             FileKind?
+  createdAt        DateTime  @default(now())
+
+  version ProjectVersion @relation(fields: [projectVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([projectVersionId, path], name: "projectVersionId_path")
+}
+
+model ChatSession {
+  id        String      @id @default(cuid())
+  projectId String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  project  Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([projectId, updatedAt], name: "chat_session_project_updated_idx")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  role      ChatRole
+  content   String
+  createdAt DateTime @default(now())
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt], name: "chat_message_session_created_idx")
 }

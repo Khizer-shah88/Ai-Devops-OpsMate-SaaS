@@ -298,7 +298,7 @@ export default function AuthPage() {
 
  {/* Footer */}
  <p className="text-xs text-muted-foreground">
- © {new Date().getFullYear()} DevMate AI — All rights reserved
+ © {new Date().getFullYear()} OpsMate AI — All rights reserved
  </p>
  </motion.div>
 

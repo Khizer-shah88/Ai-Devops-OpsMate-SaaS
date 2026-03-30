@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Code2, Bug, GitBranch, Clock, Zap, Activity,
   ArrowRight, RefreshCw, Circle, LogOut, ChevronDown,
-  LayoutDashboard, Sparkles, TrendingUp,
+  LayoutDashboard, Sparkles, TrendingUp, Trash2,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { AiLoader } from '@/components/shared/AiLoader';
@@ -248,6 +248,8 @@ export default function DashboardPage() {
   const [history,    setHistory]    = useState<HistoryItem[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [clearingAll, setClearingAll] = useState(false);
 
   const load = async (showSpin = false) => {
     if (showSpin) setRefreshing(true);
@@ -288,17 +290,51 @@ export default function DashboardPage() {
              result: item.output
            }));
         } else if (item.type === 'CICD') {
+           const cicdInput = (item.input as any) || {};
+           const cicdOutput = (item.output as any) || {};
+           const files = Array.isArray(cicdOutput.files)
+             ? cicdOutput.files.filter((f: any) => f?.kind === 'githubActions' || String(f?.path || '').includes('.github/workflows/'))
+             : [];
+
            localStorage.setItem('devmate_state_CICD', JSON.stringify({
-             actionType: (item.input as any).actionType || 'generate',
-             projectDescription: (item.input as any).projectDescription || '',
-             cloudProvider: (item.input as any).cloudProvider || 'AWS',
-             mode: (item.input as any).mode || 'quick',
-             existingConfig: (item.input as any).existingConfig || '',
-             userRequest: (item.input as any).userRequest || '',
-             result: item.output
+             versionId: cicdOutput.versionId || null,
+             repoUrl: cicdInput.repoUrl || '',
+             branch: cicdInput.branch || 'main',
+             cloudTarget: cicdInput.cloudTarget || 'local',
+             pipelineFiles: files,
+             result: cicdOutput,
            }));
         }
         router.push(route);
+    }
+  };
+
+  const handleDeleteOne = async (itemId: string) => {
+    if (deletingId || clearingAll) return;
+    setDeletingId(itemId);
+    try {
+      await historyApi.deleteOne(itemId);
+      await load();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (!history.length || clearingAll || deletingId) return;
+    const ok = window.confirm('Clear all recent activity? This cannot be undone.');
+    if (!ok) return;
+
+    setClearingAll(true);
+    try {
+      await historyApi.clearAll();
+      await load();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setClearingAll(false);
     }
   };
 
@@ -395,9 +431,22 @@ export default function DashboardPage() {
                       <p className="text-[11px] text-muted-foreground mt-0.5">Last {history.length} requests</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Live
+                  <div className="flex items-center gap-2">
+                    {history.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAll}
+                        disabled={clearingAll || !!deletingId}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        {clearingAll ? 'Clearing...' : 'Clear All'}
+                      </button>
+                    )}
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Live
+                    </div>
                   </div>
                 </div>
 
@@ -438,7 +487,18 @@ export default function DashboardPage() {
                               <span className="text-[12px] text-muted-foreground">{formatDate(item.createdAt)}</span>
                             </td>
                             <td className="px-5 py-3.5">
-                              <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteOne(item.id); }}
+                                  disabled={clearingAll || deletingId === item.id}
+                                  title="Remove from history"
+                                  className="w-6 h-6 rounded-md flex items-center justify-center text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-50"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                                <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
+                              </div>
                             </td>
                           </motion.tr>
                         ))}

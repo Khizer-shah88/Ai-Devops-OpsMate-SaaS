@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsIn } from 'class-validator';
 
 export class CicdDto {
   @IsString()
@@ -27,5 +27,6 @@ export class CicdDto {
 
   @IsString()
   @IsOptional()
+  @IsIn(['generate', 'modify', 'validate', 'explain'])
   actionType?: string;
 }

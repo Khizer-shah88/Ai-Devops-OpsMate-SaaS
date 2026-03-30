@@ -39,6 +39,8 @@ export interface CicdResult {
   githubActions: string;
   kubernetes: string;
   env: string;
+  validation: string;
+  explanation: string;
   setupInstructions: string;
 }
 

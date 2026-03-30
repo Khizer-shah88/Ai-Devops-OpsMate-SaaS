@@ -9,6 +9,7 @@ import { ReviewModule } from './modules/review/review.module';
 import { DebugModule } from './modules/debug/debug.module';
 import { CicdModule } from './modules/cicd/cicd.module';
 import { HistoryModule } from './modules/history/history.module';
+import { DevopsModule } from './modules/devops/devops.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { HistoryModule } from './modules/history/history.module';
     DebugModule,
     CicdModule,
     HistoryModule,
+    DevopsModule,
   ],
 })
 export class AppModule {}

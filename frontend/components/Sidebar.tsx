@@ -5,10 +5,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Cpu, Bug, Code2, LayoutDashboard, GitBranch,
-  LogOut, Moon, Sun, X, Sparkles, ChevronRight,
+  LogOut, X, Sparkles, ChevronRight,
   Zap,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { cn } from '@/lib/utils';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -68,6 +67,32 @@ const NAV = [
       glow:   'shadow-cyan-500/20',
     },
   },
+  {
+    href: '/devops',
+    label: 'DevOps Copilot',
+    icon: Sparkles,
+    hint: 'Infra, cost, logs',
+    accent: {
+      color: 'text-amber-400',
+      bg: 'bg-amber-500/10',
+      border: 'border-amber-500/25',
+      bar: 'bg-amber-400',
+      glow: 'shadow-amber-500/20',
+    },
+  },
+  {
+    href: '/devops-autofix',
+    label: 'Auto Fix + Debug',
+    icon: Zap,
+    hint: 'One-click fixes, live logs',
+    accent: {
+      color: 'text-emerald-400',
+      bg: 'bg-emerald-500/10',
+      border: 'border-emerald-500/25',
+      bar: 'bg-emerald-400',
+      glow: 'shadow-emerald-500/20',
+    },
+  },
 ] as const;
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -84,21 +109,6 @@ export function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }: Sideba
   const router              = useRouter();
   const { clearAuth } = useAuthStore();
   const { user } = useRequireAuth();
-  const [dark, setDark]     = useState(true);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('devmate-theme');
-    const isDark = stored ? stored === 'dark' : true;
-    setDark(isDark);
-    document.documentElement.classList.toggle('light', !isDark);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = !dark;
-    setDark(next);
-    localStorage.setItem('devmate-theme', next ? 'dark' : 'light');
-    document.documentElement.classList.toggle('light', !next);
-  };
 
   const handleLogout = () => { clearAuth(); router.push('/auth'); };
 
@@ -144,6 +154,7 @@ export function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }: Sideba
             {/* Badge */}
             <div className="relative w-11 h-11 flex-shrink-0">
               <div className="absolute inset-0 rounded-[13px] bg-gradient-to-br from-brand-400 to-brand-700 shadow-lg shadow-brand-500/35" />
+              <div className="absolute inset-0 rounded-[13px] ring-1 ring-black/10 dark:ring-white/10" />
               <div className="absolute inset-0 flex items-center justify-center">
                 <Cpu className="w-5.5 h-5.5 text-white" style={{ width: 22, height: 22 }} />
               </div>
@@ -153,7 +164,7 @@ export function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }: Sideba
 
             <div>
               <p className="text-[15px] font-extrabold text-foreground leading-none tracking-tight">
-                DevMate AI
+                OpsMate AI
               </p>
               <p className="text-[11px] text-muted-foreground/60 mt-1 leading-none">
                 Developer Assistant
@@ -318,49 +329,21 @@ export function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }: Sideba
             </button>
           </div>
 
-          {/* Theme + Logout row */}
+          {/* Sign out row */}
           <div className="flex gap-2">
-            {/* Theme */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className={cn(
-                'flex-1 flex items-center justify-center gap-2 h-9 rounded-xl',
-                'text-[12px] font-semibold text-muted-foreground',
-                'border border-border/60 bg-secondary/30',
-                'hover:bg-secondary hover:text-foreground transition-all duration-200',
-              )}
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={dark ? 'sun' : 'moon'}
-                  initial={{ scale: 0.55, rotate: -25, opacity: 0 }}
-                  animate={{ scale: 1,    rotate: 0,   opacity: 1 }}
-                  exit={{ scale: 0.55, rotate: 25, opacity: 0 }}
-                  transition={{ duration: 0.17 }}
-                  className="flex items-center gap-2"
-                >
-                  {dark
-                    ? <><Sun style={{ width: 14, height: 14 }} /> Light mode</>
-                    : <><Moon style={{ width: 14, height: 14 }} /> Dark mode</>
-                  }
-                </motion.span>
-              </AnimatePresence>
-            </button>
-
-            {/* Sign out */}
             <button
               type="button"
               onClick={handleLogout}
               title="Sign out"
               className={cn(
-                'w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0',
+                'w-full h-9 rounded-xl flex items-center justify-center gap-2',
                 'border border-border/60 bg-secondary/30 text-muted-foreground',
                 'hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/22',
                 'transition-all duration-200',
               )}
             >
               <LogOut style={{ width: 15, height: 15 }} />
+              <span className="text-[12px] font-semibold">Sign out</span>
             </button>
           </div>
         </div>

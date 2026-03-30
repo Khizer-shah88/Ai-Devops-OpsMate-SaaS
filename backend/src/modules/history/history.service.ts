@@ -37,6 +37,29 @@ export class HistoryService {
 		};
 	}
 
+	async deleteHistoryItem(userId: string, requestId: string) {
+		const deleted = await this.prisma.request.deleteMany({
+			where: {
+				id: requestId,
+				userId,
+			},
+		});
+
+		return {
+			deleted: deleted.count > 0,
+		};
+	}
+
+	async clearHistory(userId: string) {
+		const deleted = await this.prisma.request.deleteMany({
+			where: { userId },
+		});
+
+		return {
+			deletedCount: deleted.count,
+		};
+	}
+
 	private safeParse(input: string): unknown {
 		try {
 			return JSON.parse(input);

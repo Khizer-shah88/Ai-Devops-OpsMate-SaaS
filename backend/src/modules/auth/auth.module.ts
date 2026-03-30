@@ -15,7 +15,11 @@ import { JwtStrategy } from './strategy/jwt.strategy';
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => ({
 				secret: configService.getOrThrow<string>('jwtSecret', { infer: true }),
-				signOptions: { expiresIn: '7d' },
+				signOptions: {
+					expiresIn: configService.get<string>('nodeEnv', { infer: true }) === 'production' ? '12h' : '7d',
+					issuer: 'opsmate-api',
+					audience: 'opsmate-app',
+				},
 			}),
 		}),
 	],

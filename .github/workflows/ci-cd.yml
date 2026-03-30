@@ -1,59 +1,166 @@
-name: DevMate AI CI
+name: OpsMate CI-CD
 
 on:
-	push:
-		branches: ["master", "main"]
-	pull_request:
-		branches: ["master", "main"]
+  push:
+    branches: ["main", "master"]
+    tags:
+      - "v*"
+  pull_request:
+    branches: ["main", "master"]
+
+concurrency:
+  group: opsmate-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-	backend:
-		runs-on: ubuntu-latest
-		defaults:
-			run:
-				working-directory: backend
-		steps:
-			- name: Checkout
-				uses: actions/checkout@v4
+  backend:
+    name: Backend Build + Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-			- name: Setup Node
-				uses: actions/setup-node@v4
-				with:
-					node-version: 20
-					cache: npm
-					cache-dependency-path: backend/package-lock.json
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
 
-			- name: Install dependencies
-				run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-			- name: Generate Prisma client
-				run: npx prisma generate
-				env:
-					DATABASE_URL: postgresql://devmate:devmate_password@localhost:5432/devmate_ai?schema=public
+      - name: Generate Prisma client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://devmate:devmate_password@localhost:5432/devmate_ai?schema=public
 
-			- name: Build backend
-				run: npm run build
+      - name: Lint backend
+        run: npm run lint --if-present
 
-	frontend:
-		runs-on: ubuntu-latest
-		defaults:
-			run:
-				working-directory: frontend
-		steps:
-			- name: Checkout
-				uses: actions/checkout@v4
+      - name: Build backend
+        run: npm run build
 
-			- name: Setup Node
-				uses: actions/setup-node@v4
-				with:
-					node-version: 20
-					cache: npm
-					cache-dependency-path: frontend/package-lock.json
+      - name: Test backend
+        run: npm test -- --runInBand --passWithNoTests
 
-			- name: Install dependencies
-				run: npm ci
+  frontend:
+    name: Frontend Build + Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-			- name: Build frontend
-				run: npm run build
-				env:
-					NEXT_PUBLIC_API_URL: http://localhost:4000
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint frontend
+        run: npm run lint --if-present
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: 1
+
+  docker:
+    name: Build and Push Containers
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, security-scan]
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Check Docker Hub credentials
+        id: dockerhub_check
+        run: |
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Login to Docker Hub
+        if: steps.dockerhub_check.outputs.available == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set image tag
+        run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Build backend image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/opsmate-backend:${IMAGE_TAG} ./backend
+
+      - name: Build frontend image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/opsmate-frontend:${IMAGE_TAG} ./frontend
+
+      - name: Push backend image
+        if: steps.dockerhub_check.outputs.available == 'true'
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/opsmate-backend:${IMAGE_TAG}
+
+      - name: Push frontend image
+        if: steps.dockerhub_check.outputs.available == 'true'
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/opsmate-frontend:${IMAGE_TAG}
+
+  deploy-staging:
+    name: Deploy Staging
+    runs-on: ubuntu-latest
+    needs: [docker]
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+    steps:
+      - name: Deployment gate
+        run: echo "Add staging deployment command here (ssh/kubectl/terraform)."
+
+  deploy-production:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    needs: [docker]
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: production
+    steps:
+      - name: Deployment gate
+        run: echo "Add production deployment command here with rollback hooks and approval gates."
