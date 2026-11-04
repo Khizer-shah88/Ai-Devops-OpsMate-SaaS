@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AiService } from '../ai/ai.service';
@@ -13,6 +13,7 @@ import { request as httpsRequest } from 'https';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 import { posix as pathPosix } from 'path';
 import { OnboardRepoDto } from './dto/onboard-repo.dto';
+import { RepoMemoryService } from './repo-memory.service';
 
 export type DetectedService = {
   name: string;
@@ -86,6 +87,7 @@ export class DevopsService {
     private readonly aiService: AiService,
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly repoMemory: RepoMemoryService,
   ) {}
 
   async analyzePackage(userId: string, dto: AnalyzePackageDto) {
@@ -178,6 +180,24 @@ export class DevopsService {
         versions: true,
       },
     });
+
+    try {
+      await this.repoMemory.recordEvent(
+        userId,
+        dto.repoUrl,
+        'analysis',
+        `Analyzed ${projectName} on ${branch}`,
+        { versionId: project.versions[0].id, services: analysis.services },
+        {
+          branch,
+          cloudTarget: dto.cloudTarget,
+          analysis: analysis as unknown as Record<string, unknown>,
+          lastVersionId: project.versions[0].id,
+        },
+      );
+    } catch {
+      // Memory must never block analysis.
+    }
 
     return {
       project,
@@ -282,14 +302,32 @@ export class DevopsService {
       const baseScore = this.computeHealthScore(checks);
       const penalty = Math.min(secretRisks.length * 8, 32);
       const readinessScore = Math.max(0, baseScore - penalty);
-
-      return {
+      const readinessResult = {
         analysis,
         readinessScore,
         maturity: this.readinessBand(readinessScore),
         checks,
         secretRisks,
       };
+
+      try {
+        await this.repoMemory.recordEvent(
+          userId,
+          dto.repoUrl,
+          'readiness',
+          `Readiness score ${readinessScore}/100 (${readinessResult.maturity})`,
+          readinessResult as unknown as Record<string, unknown>,
+          {
+            branch,
+            analysis: analysis as unknown as Record<string, unknown>,
+            readiness: readinessResult as unknown as Record<string, unknown>,
+          },
+        );
+      } catch {
+        // Memory must never block readiness.
+      }
+
+      return readinessResult;
     } catch (err) {
       if (this.isGithubUnauthorizedError(err)) {
         if (usingProvidedToken) {
@@ -582,6 +620,26 @@ export class DevopsService {
       // History logging should never block generation.
     }
 
+    if (project.repoUrl || dto.repoUrl) {
+      try {
+        await this.repoMemory.recordEvent(
+          userId,
+          project.repoUrl || dto.repoUrl!,
+          'generate',
+          `Generated ${result.files.length} infra/CI file(s)`,
+          { versionId: result.versionId, paths: result.files.map((f: { path: string }) => f.path) },
+          {
+            branch: dto.branch,
+            cloudTarget: dto.cloudTarget,
+            analysis: analysis as unknown as Record<string, unknown>,
+            lastVersionId: result.versionId,
+          },
+        );
+      } catch {
+        // Memory must never block generation.
+      }
+    }
+
     return result;
   }
 
@@ -671,11 +729,25 @@ export class DevopsService {
     };
   }
 
-  async getChat(sessionId: string) {
-    return this.prisma.chatSession.findUnique({
+  async getChat(userId: string, sessionId: string) {
+    const session = await this.prisma.chatSession.findUnique({
       where: { id: sessionId },
-      include: { messages: { orderBy: { createdAt: 'asc' } } },
+      include: {
+        messages: { orderBy: { createdAt: 'asc' } },
+        project: { select: { userId: true } },
+      },
     });
+
+    if (!session) {
+      throw new NotFoundException('Chat session not found');
+    }
+
+    if (session.project && session.project.userId !== userId) {
+      throw new ForbiddenException('Chat session does not belong to the current user');
+    }
+
+    const { project: _project, ...safeSession } = session;
+    return safeSession;
   }
 
   async addChatMessage(sessionId: string, role: ChatRole, content: string) {
@@ -709,13 +781,19 @@ export class DevopsService {
       services.push({ name: 'frontend', kind: 'frontend', framework: has('next') ? 'Next.js' : 'React', language: 'typescript', portHint: 3000 });
     }
 
-    if (has('@nestjs/core')) {
-      services.push({ name: 'backend', kind: 'backend', framework: 'NestJS', language: 'typescript', portHint: 3001 });
-    } else if (has('express')) {
-      services.push({ name: 'backend', kind: 'backend', framework: 'Express', language: 'javascript', portHint: 3001 });
+    if (has('@nestjs/core') || has('@nestjs/common') || has('@nestjs/platform-express')) {
+      services.push({ name: 'backend', kind: 'backend', framework: 'NestJS', language: 'typescript', portHint: 4000 });
+    } else if (has('express') || has('fastify') || has('koa')) {
+      services.push({
+        name: 'backend',
+        kind: 'backend',
+        framework: has('fastify') ? 'Fastify' : has('koa') ? 'Koa' : 'Express',
+        language: 'javascript',
+        portHint: 4000,
+      });
     }
 
-    if (has('prisma')) {
+    if (has('prisma') || has('@prisma/client')) {
       services.push({ name: 'database', kind: 'database', framework: 'Prisma', language: 'sql', envHints: ['DATABASE_URL'] });
     }
 
@@ -843,7 +921,7 @@ export class DevopsService {
 
     if (!hasBackend || !hasFrontend) {
       return [
-        'name: OpsMate CI-CD',
+        'name: DevMat CI-CD',
         '',
         'on:',
         '  push:',
@@ -892,7 +970,7 @@ export class DevopsService {
     );
 
     const lines = [
-      'name: OpsMate CI-CD',
+      'name: DevMat CI-CD',
       '',
       'on:',
       '  push:',
@@ -1283,7 +1361,7 @@ export class DevopsService {
       lines.push('          npx vercel --prod --token "${{ secrets.VERCEL_TOKEN }}" || exit 1');
       lines.push('      - name: Summary');
       lines.push('        run: echo "Vercel deploy completed ✅" >> $GITHUB_STEP_SUMMARY');
-      return lines.join('\\n');
+      return lines.join('\n');
     }
 
     if (cloudTarget === CloudTarget.ecs || cloudTarget === CloudTarget.eks) {
@@ -1302,7 +1380,7 @@ export class DevopsService {
       }
       lines.push('      - name: Summary');
       lines.push('        run: echo "AWS deploy stage completed ✅" >> $GITHUB_STEP_SUMMARY');
-      return lines.join('\\n');
+      return lines.join('\n');
     }
 
     lines.push('      - name: Prepare deploy SSH key and vars');
@@ -1350,7 +1428,7 @@ export class DevopsService {
       lines.push(`      # cloudTarget: ${cloudTarget}`);
     }
 
-    return lines.join('\\n');
+    return lines.join('\n');
   }
 
   private findDockerfilePath(serviceDir: string, repoPaths: string[]): string {
@@ -1637,10 +1715,10 @@ export class DevopsService {
           headers: token
             ? {
                 Authorization: `Bearer ${token}`,
-                'User-Agent': 'OpsMate-AI',
+                'User-Agent': 'DevMat-AI',
               }
             : {
-                'User-Agent': 'OpsMate-AI',
+                'User-Agent': 'DevMat-AI',
               },
         },
         (res) => {
@@ -1987,7 +2065,7 @@ export class DevopsService {
           method: 'GET',
           headers: {
             Accept: 'application/vnd.github+json',
-            'User-Agent': 'OpsMate-AI',
+            'User-Agent': 'DevMat-AI',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         },
@@ -2068,7 +2146,7 @@ export class DevopsService {
             Accept: 'application/json',
             'Content-Type': 'application/json',
             'Content-Length': Buffer.byteLength(payload),
-            'User-Agent': 'OpsMate-AI',
+            'User-Agent': 'DevMat-AI',
           },
         },
         (res) => {

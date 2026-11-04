@@ -10,12 +10,16 @@ import { DebugModule } from './modules/debug/debug.module';
 import { CicdModule } from './modules/cicd/cicd.module';
 import { HistoryModule } from './modules/history/history.module';
 import { DevopsModule } from './modules/devops/devops.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env', '../.env'],
+      // Root .env first so shared secrets win; backend/.env can override for local tweaks.
+      // dotenv does not override already-set keys, so empty backend values won't wipe root keys.
+      envFilePath: ['../.env', '.env'],
       load: [configuration],
       validationSchema,
     }),
@@ -28,5 +32,7 @@ import { DevopsModule } from './modules/devops/devops.module';
     HistoryModule,
     DevopsModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}

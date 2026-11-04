@@ -4,7 +4,6 @@ import { FormEvent, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
- Cpu,
  Mail,
  Lock,
  User,
@@ -21,6 +20,8 @@ import {
 import { authApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { cn } from '@/lib/utils';
+import { BrandLogo } from '@/components/shared/BrandLogo';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import Aurora from '@/components/ui/Aurora';
 import TextType from '@/components/ui/TextType';
 import Antigravity from '@/components/Antigravity';
@@ -186,6 +187,10 @@ export default function AuthPage() {
  <div className="relative min-h-screen flex bg-background text-foreground overflow-hidden">
  <FloatingOrbs />
 
+ <div className="absolute top-4 right-4 z-30">
+ <ThemeToggle />
+ </div>
+
  {/* ── LEFT PANEL — branding ─────────────────────────────────────── */}
  <motion.div
  initial={{ opacity: 0, x: -30 }}
@@ -194,15 +199,7 @@ export default function AuthPage() {
  className="hidden lg:flex flex-col justify-between w-[45%] px-16 py-14 relative z-10"
  >
  {/* Logo */}
- <div className="flex items-center gap-3">
- <div className="w-10 h-10 rounded-2xl bg-brand flex items-center justify-center shadow-lg shadow-brand/40">
- <Cpu className="w-5 h-5 text-white" />
- </div>
- <div>
- <p className="text-base font-bold text-foreground leading-none">DevMate AI</p>
- <p className="text-[11px] text-muted-foreground mt-0.5">Developer Assistant</p>
- </div>
- </div>
+ <BrandLogo size={40} textClassName="text-base font-bold" />
 
  {/* Headline */}
  <div className="space-y-8">
@@ -298,7 +295,7 @@ export default function AuthPage() {
 
  {/* Footer */}
  <p className="text-xs text-muted-foreground">
- © {new Date().getFullYear()} OpsMate AI — All rights reserved
+ © {new Date().getFullYear()} DevMat AI — All rights reserved
  </p>
  </motion.div>
 
@@ -311,15 +308,12 @@ export default function AuthPage() {
  className="w-full max-w-[420px]"
  >
  {/* Mobile logo */}
- <div className="flex items-center justify-center gap-2.5 mb-8 lg:hidden">
- <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center shadow-lg shadow-brand/40">
- <Cpu className="w-5 h-5 text-white" />
- </div>
- <span className="text-xl font-bold text-foreground">OpsMate AI</span>
+ <div className="flex justify-center mb-8 lg:hidden">
+ <BrandLogo size={40} subtitle="" textClassName="text-xl font-bold" />
  </div>
 
  {/* Card */}
- <div className="bg-card/70 backdrop-blur-2xl border border-border/60 rounded-2xl p-8 shadow-2xl shadow-black/20">
+ <div className="bg-card/90 backdrop-blur-2xl border border-border/60 rounded-2xl p-8 shadow-xl shadow-black/5 dark:shadow-black/30">
 
  {/* Header */}
  <div className="mb-7">
@@ -328,7 +322,7 @@ export default function AuthPage() {
  </h1>
  <p className="text-sm text-muted-foreground mt-1">
  {mode === 'login'
- ? 'Sign in to your OpsMate AI workspace'
+ ? 'Sign in to your DevMat AI workspace'
  : 'Start building smarter with AI assistance'}
  </p>
  </div>

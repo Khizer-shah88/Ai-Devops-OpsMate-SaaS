@@ -4,13 +4,15 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Cpu, Bug, Code2, LayoutDashboard, GitBranch,
+  Bug, Code2, LayoutDashboard, GitBranch,
   LogOut, X, Sparkles, ChevronRight,
   Zap,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { cn } from '@/lib/utils';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { BrandLogo } from '@/components/shared/BrandLogo';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
 
@@ -21,11 +23,11 @@ const NAV = [
     icon:  LayoutDashboard,
     hint:  'Overview & activity',
     accent: {
-      color:  'text-brand-400',
-      bg:     'bg-brand-500/10',
-      border: 'border-brand-500/25',
-      bar:    'bg-brand-400',
-      glow:   'shadow-brand-500/20',
+      color:  'text-brand',
+      bg:     'bg-brand/10',
+      border: 'border-brand/25',
+      bar:    'bg-brand',
+      glow:   'shadow-brand/20',
     },
   },
   {
@@ -34,7 +36,7 @@ const NAV = [
     icon:  Code2,
     hint:  'AI static analysis',
     accent: {
-      color:  'text-violet-400',
+      color:  'text-violet-600 dark:text-violet-400',
       bg:     'bg-violet-500/10',
       border: 'border-violet-500/25',
       bar:    'bg-violet-400',
@@ -47,7 +49,7 @@ const NAV = [
     icon:  Bug,
     hint:  'Error diagnosis',
     accent: {
-      color:  'text-rose-400',
+      color:  'text-rose-600 dark:text-rose-400',
       bg:     'bg-rose-500/10',
       border: 'border-rose-500/25',
       bar:    'bg-rose-400',
@@ -60,7 +62,7 @@ const NAV = [
     icon:  GitBranch,
     hint:  'Pipelines & Docker',
     accent: {
-      color:  'text-cyan-400',
+      color:  'text-sky-600 dark:text-cyan-400',
       bg:     'bg-cyan-500/10',
       border: 'border-cyan-500/25',
       bar:    'bg-cyan-400',
@@ -73,7 +75,7 @@ const NAV = [
     icon: Sparkles,
     hint: 'Infra, cost, logs',
     accent: {
-      color: 'text-amber-400',
+      color: 'text-amber-600 dark:text-amber-400',
       bg: 'bg-amber-500/10',
       border: 'border-amber-500/25',
       bar: 'bg-amber-400',
@@ -86,7 +88,7 @@ const NAV = [
     icon: Zap,
     hint: 'One-click fixes, live logs',
     accent: {
-      color: 'text-emerald-400',
+      color: 'text-emerald-600 dark:text-emerald-400',
       bg: 'bg-emerald-500/10',
       border: 'border-emerald-500/25',
       bar: 'bg-emerald-400',
@@ -150,27 +152,7 @@ export function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }: Sideba
             LOGO
         ════════════════════════════════ */}
         <div className="flex items-center justify-between px-5 py-5 border-b border-border/60 flex-shrink-0">
-          <div className="flex items-center gap-3.5">
-            {/* Badge */}
-            <div className="relative w-11 h-11 flex-shrink-0">
-              <div className="absolute inset-0 rounded-[13px] bg-gradient-to-br from-brand-400 to-brand-700 shadow-lg shadow-brand-500/35" />
-              <div className="absolute inset-0 rounded-[13px] ring-1 ring-black/10 dark:ring-white/10" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Cpu className="w-5.5 h-5.5 text-white" style={{ width: 22, height: 22 }} />
-              </div>
-              {/* Online dot */}
-              <span className="absolute -top-[3px] -right-[3px] w-3 h-3 rounded-full bg-emerald-400 border-[2.5px] border-card shadow-sm shadow-emerald-400/50" />
-            </div>
-
-            <div>
-              <p className="text-[15px] font-extrabold text-foreground leading-none tracking-tight">
-                OpsMate AI
-              </p>
-              <p className="text-[11px] text-muted-foreground/60 mt-1 leading-none">
-                Developer Assistant
-              </p>
-            </div>
-          </div>
+          <BrandLogo size={44} />
 
           {/* Mobile close */}
           <button
@@ -192,7 +174,7 @@ export function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }: Sideba
         {/* ════════════════════════════════
             NAV ITEMS
         ════════════════════════════════ */}
-        <nav className="flex-1 px-3.5 space-y-1 overflow-y-auto pb-2">
+        <nav className="flex-1 px-3.5 space-y-1 overflow-y-auto scrollbar-hide pb-2">
           {NAV.map((item, i) => {
             const active = pathname === item.href;
             const Icon   = item.icon;
@@ -278,17 +260,17 @@ export function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }: Sideba
         {/* ════════════════════════════════
             AI STATUS BADGE
         ════════════════════════════════ */}
-        <div className="mx-3.5 mb-3 px-4 py-3.5 rounded-2xl border border-brand-500/18 bg-gradient-to-br from-brand-500/8 to-purple-600/5">
+        <div className="mx-3.5 mb-3 px-4 py-3.5 rounded-2xl border border-brand/20 bg-gradient-to-br from-brand/10 to-purple-600/5">
           <div className="flex items-center gap-2 mb-1.5">
-            <div className="w-6 h-6 rounded-lg bg-brand-500/15 border border-brand-500/20 flex items-center justify-center">
-              <Sparkles className="text-brand-400" style={{ width: 12, height: 12 }} />
+            <div className="w-6 h-6 rounded-lg bg-brand/15 border border-brand/20 flex items-center justify-center">
+              <Sparkles className="text-brand" style={{ width: 12, height: 12 }} />
             </div>
-            <span className="text-[11px] font-extrabold text-brand-400 uppercase tracking-[0.1em]">
+            <span className="text-[11px] font-extrabold text-brand uppercase tracking-[0.1em]">
               GPT-4 Turbo
             </span>
             <div className="ml-auto flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[10px] font-semibold text-emerald-400">Active</span>
+              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Active</span>
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground/60 leading-[1.55]">
@@ -323,22 +305,23 @@ export function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }: Sideba
               type="button"
               onClick={handleLogout}
               title="Sign out"
-              className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/12 transition-all duration-200 flex-shrink-0"
+              className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-500/12 transition-all duration-200 flex-shrink-0"
             >
               <LogOut style={{ width: 15, height: 15 }} />
             </button>
           </div>
 
-          {/* Sign out row */}
+          {/* Theme + Sign out */}
           <div className="flex gap-2">
+            <ThemeToggle className="flex-shrink-0" />
             <button
               type="button"
               onClick={handleLogout}
               title="Sign out"
               className={cn(
-                'w-full h-9 rounded-xl flex items-center justify-center gap-2',
+                'flex-1 h-9 rounded-xl flex items-center justify-center gap-2',
                 'border border-border/60 bg-secondary/30 text-muted-foreground',
-                'hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/22',
+                'hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-500/22',
                 'transition-all duration-200',
               )}
             >

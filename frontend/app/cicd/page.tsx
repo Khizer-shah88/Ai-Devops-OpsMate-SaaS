@@ -16,13 +16,14 @@ import {
   Box,
   XCircle,
   Save,
-  ChevronDown,
   ShieldAlert,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { AiLoader } from '@/components/shared/AiLoader';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { RepoSelect } from '@/components/shared/RepoSelect';
+import { GithubShipPanel } from '@/components/shared/GithubShipPanel';
 import { devopsApi } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { cn } from '@/lib/utils';
@@ -62,7 +63,7 @@ function CopyBtn({ text }: { text: string }) {
         'flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg',
         'text-[10px] sm:text-[11px] font-semibold transition-all duration-200',
         ok
-          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
           : 'bg-secondary/70 text-muted-foreground hover:text-foreground border border-border hover:bg-secondary',
       )}
     >
@@ -77,7 +78,7 @@ function PipelinePanel({ file }: { file: GeneratedFile }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
       <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-2.5">
-        <div className="flex items-center gap-2 text-emerald-400">
+        <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
           <Workflow className="w-3.5 h-3.5" />
           <p className="text-[12px] sm:text-[12.5px] font-medium">Repository-aware CI/CD pipeline generated.</p>
         </div>
@@ -86,8 +87,8 @@ function PipelinePanel({ file }: { file: GeneratedFile }) {
 
       {!content ? (
         <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/20">
-          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-          <p className="text-[12px] sm:text-[13px] text-amber-400">
+          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <p className="text-[12px] sm:text-[13px] text-amber-600 dark:text-amber-400">
             Pipeline file was not returned. Try running Generate again after Analyze Repo.
           </p>
         </div>
@@ -96,13 +97,13 @@ function PipelinePanel({ file }: { file: GeneratedFile }) {
           <div className="flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 border-b border-violet-500/20 bg-violet-500/5">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center flex-shrink-0 border border-violet-500/20 bg-violet-500/5">
-                <Workflow className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-violet-400" />
+                <Workflow className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-violet-600 dark:text-violet-400" />
               </div>
-              <span className="text-[12px] sm:text-[13px] font-semibold truncate text-violet-400">{file.path}</span>
+              <span className="text-[12px] sm:text-[13px] font-semibold truncate text-violet-600 dark:text-violet-400">{file.path}</span>
             </div>
             <span className="text-[10px] sm:text-[11px] text-muted-foreground font-mono hidden sm:block">{content.split('\n').length} lines</span>
           </div>
-          <pre className="px-3.5 sm:px-4 py-3 sm:py-4 text-[11px] sm:text-[12.5px] font-mono leading-[1.65] overflow-x-auto overflow-y-auto max-h-[480px] text-foreground/80 whitespace-pre">
+          <pre className="px-3.5 sm:px-4 py-3 sm:py-4 text-[11px] sm:text-[12.5px] font-mono leading-[1.65] overflow-x-auto overflow-y-auto scrollbar-hide max-h-[480px] text-foreground/80 whitespace-pre">
             {content}
           </pre>
         </div>
@@ -402,97 +403,105 @@ export default function CicdPage() {
 
   return (
     <AppShell>
-      <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-7 max-w-7xl mx-auto">
-        <div className="flex items-start justify-between mb-5 sm:mb-7">
+      <div className="w-full max-w-[1400px] mx-auto space-y-6">
+        <div className="flex items-start justify-between gap-4">
           <PageHeader
             icon={GitBranch}
             title="CI/CD Generator"
-            description="Connect GitHub, analyze repo structure, and generate a professional repository-specific GitHub Actions pipeline."
+            description="Connect GitHub, analyze your repository, and generate a production-ready GitHub Actions pipeline."
             badge="AI"
           />
           <ThemeToggle />
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-4 sm:gap-5">
-          <div className="space-y-3 sm:space-y-4">
-            <div className="rounded-2xl border border-border bg-card p-3.5 sm:p-4 space-y-4">
-              <div className="rounded-xl border border-border bg-secondary/15 overflow-hidden">
-                <div className="flex items-center justify-between px-3.5 py-3 border-b border-border/60">
-                  <div className="flex items-center gap-2.5">
-                    <div className={cn(
-                      'w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 border',
-                      githubStatus?.connected
-                        ? 'bg-emerald-500/10 border-emerald-500/25'
-                        : 'bg-secondary border-border',
-                    )}>
-                      <GitBranch className={cn('w-3 h-3', githubStatus?.connected ? 'text-emerald-400' : 'text-muted-foreground')} />
-                    </div>
-                    <div>
-                      <p className="text-[12px] font-semibold text-foreground leading-none">GitHub Repo</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {githubStatus?.connected
-                          ? <span className="text-emerald-400 font-medium">Connected as @{githubStatus.username}</span>
-                          : 'Optional — improves output quality'}
-                      </p>
-                    </div>
+        <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-5 lg:gap-6 items-start">
+          {/* ── Controls ─────────────────────────────────────────────── */}
+          <aside className="space-y-4 xl:sticky xl:top-4">
+            <section className="rounded-2xl border border-border/80 bg-card/90 overflow-visible shadow-sm">
+              <div className="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border/70">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={cn(
+                    'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 border',
+                    githubStatus?.connected
+                      ? 'bg-emerald-500/10 border-emerald-500/25'
+                      : 'bg-secondary border-border',
+                  )}>
+                    <GitBranch className={cn('w-3.5 h-3.5', githubStatus?.connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')} />
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button" onClick={startGithubOauth} disabled={connecting}
-                      className={cn(
-                        'flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[11px] font-semibold border transition-all duration-200',
-                        'border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10',
-                        connecting && 'opacity-50 cursor-not-allowed',
-                      )}
-                    >
-                      {connecting
-                        ? <motion.span className="w-3 h-3 rounded-full border border-cyan-400/30 border-t-cyan-400"
-                            animate={{ rotate: 360 }} transition={{ duration: 0.75, repeat: Infinity, ease: 'linear' }} />
-                        : <Sparkles className="w-3 h-3" />}
-                      {githubStatus?.connected ? 'Reconnect' : 'Connect'}
-                    </button>
-                    <button
-                      type="button" onClick={loadGithub} disabled={loadingRepos}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary border border-border transition-all duration-200 disabled:opacity-40"
-                    >
-                      <RefreshCw className={cn('w-3 h-3', loadingRepos && 'animate-spin')} />
-                    </button>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-foreground leading-none">GitHub Repo</p>
+                    <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                      {githubStatus?.connected
+                        ? <span className="text-emerald-600 dark:text-emerald-400 font-medium">Connected as @{githubStatus.username}</span>
+                        : 'Connect to pick a repository'}
+                    </p>
                   </div>
                 </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    type="button" onClick={startGithubOauth} disabled={connecting}
+                    className={cn(
+                      'flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[11px] font-semibold border transition-all duration-200',
+                      'border-cyan-500/30 text-sky-600 dark:text-cyan-400 hover:bg-cyan-500/10',
+                      connecting && 'opacity-50 cursor-not-allowed',
+                    )}
+                  >
+                    {connecting
+                      ? <motion.span className="w-3 h-3 rounded-full border border-cyan-400/30 border-t-cyan-400"
+                          animate={{ rotate: 360 }} transition={{ duration: 0.75, repeat: Infinity, ease: 'linear' }} />
+                      : <Sparkles className="w-3 h-3" />}
+                    {githubStatus?.connected ? 'Reconnect' : 'Connect'}
+                  </button>
+                  <button
+                    type="button" onClick={loadGithub} disabled={loadingRepos}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary border border-border transition-all duration-200 disabled:opacity-40"
+                    aria-label="Refresh repositories"
+                  >
+                    <RefreshCw className={cn('w-3.5 h-3.5', loadingRepos && 'animate-spin')} />
+                  </button>
+                </div>
+              </div>
 
-                {githubStatus?.connected ? (
-                  <div className="p-3 sm:p-3.5 space-y-2.5">
-                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px_150px] gap-2">
-                      <div className="relative">
-                        <select
-                          value={selectedRepoUrl}
-                          onChange={e => {
-                            const url = e.target.value;
-                            setSelectedRepoUrl(url);
-                            const found = repos.find(r => r.htmlUrl === url);
-                            if (found) setBranch(found.defaultBranch || 'main');
-                          }}
-                          className={cn(inputCls, 'h-9 px-3 pr-8 appearance-none cursor-pointer bg-card text-foreground')}
-                        >
-                          <option value="">Select repository...</option>
-                          {repos.map(repo => (
-                            <option key={repo.id} value={repo.htmlUrl}>
-                              {repo.fullName}{repo.private ? ' (private)' : ''}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                      </div>
+              {githubStatus?.connected ? (
+                <div className="p-4 space-y-3.5 overflow-visible">
+                  <div className="space-y-1.5">
+                    <label className={labelCls}>Repository</label>
+                      <RepoSelect
+                        repos={repos}
+                        value={selectedRepoUrl}
+                        onChange={async (url, repo) => {
+                          setSelectedRepoUrl(url);
+                          if (repo) setBranch(repo.defaultBranch || 'main');
+                          try {
+                            const memory = await devopsApi.getRepoMemory(url);
+                            if (memory.lastBranch) setBranch(memory.lastBranch);
+                            if (memory.cloudTarget) setCloudTarget(memory.cloudTarget);
+                            if (memory.analysis) setAnalysis(memory.analysis);
+                            if (memory.readiness) setReadiness(memory.readiness);
+                            if (memory.lastVersionId) setCurrentVersionId(memory.lastVersionId);
+                          } catch {
+                            // First-time repo has no memory yet.
+                          }
+                        }}
+                      />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-1.5 min-w-0">
+                      <label className={labelCls}>Branch</label>
                       <input
                         value={branch}
                         onChange={e => setBranch(e.target.value)}
                         placeholder="main"
-                        className={cn(inputCls, 'h-9')}
+                        className={cn(inputCls, 'h-11')}
                       />
+                    </div>
+                    <div className="space-y-1.5 min-w-0">
+                      <label className={labelCls}>Target</label>
                       <select
                         value={cloudTarget}
                         onChange={e => setCloudTarget(e.target.value as CloudTarget)}
-                        className={cn(inputCls, 'h-9 px-3 appearance-none cursor-pointer')}
+                        className={cn(inputCls, 'h-11 appearance-none cursor-pointer')}
                       >
                         <option value="local">Local / EC2</option>
                         <option value="ecs">AWS ECS</option>
@@ -501,96 +510,87 @@ export default function CicdPage() {
                         <option value="digitalocean">DigitalOcean</option>
                       </select>
                     </div>
-
-                    {selectedRepoUrl && (
-                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-                        <span className="truncate">Using <span className="text-foreground font-medium">{selectedRepoUrl.split('/').slice(-2).join('/')}</span> ({branch || 'main'}, {cloudTarget})</span>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button" onClick={analyzeRepo}
-                        disabled={analyzingRepo || !selectedRepoUrl}
-                        className={cn(
-                          'flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-semibold border transition-all duration-200',
-                          'border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/10',
-                          (analyzingRepo || !selectedRepoUrl) && 'opacity-40 cursor-not-allowed',
-                        )}
-                      >
-                        {analyzingRepo
-                          ? <><motion.span className="w-3 h-3 rounded-full border border-emerald-400/30 border-t-emerald-400"
-                              animate={{ rotate: 360 }} transition={{ duration: 0.75, repeat: Infinity, ease: 'linear' }} />
-                            Analyzing…</>
-                          : <><FileSearch className="w-3 h-3" /> Analyze Repo</>}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={runReadinessScan}
-                        disabled={readinessLoading || !selectedRepoUrl}
-                        className={cn(
-                          'flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-semibold border transition-all duration-200',
-                          'border-amber-500/25 text-amber-400 hover:bg-amber-500/10',
-                          (readinessLoading || !selectedRepoUrl) && 'opacity-40 cursor-not-allowed',
-                        )}
-                      >
-                        {readinessLoading
-                          ? <><motion.span className="w-3 h-3 rounded-full border border-amber-400/30 border-t-amber-400"
-                              animate={{ rotate: 360 }} transition={{ duration: 0.75, repeat: Infinity, ease: 'linear' }} />
-                            Scanning…</>
-                          : <><ShieldAlert className="w-3 h-3" /> Readiness + Secret Scan</>}
-                      </button>
-                    </div>
                   </div>
-                ) : (
-                  <p className="px-3.5 py-3 text-[11px] text-muted-foreground/70">
-                    Connect GitHub to analyze repository files and build an accurate CI/CD pipeline.
-                  </p>
-                )}
-              </div>
 
+                  {selectedRepoUrl && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground rounded-lg bg-secondary/40 border border-border/60 px-2.5 py-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                      <span className="truncate">
+                        Using <span className="text-foreground font-medium">{selectedRepoUrl.split('/').slice(-2).join('/')}</span>
+                        {' '}({branch || 'main'} · {cloudTarget})
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-2">
+                    <button
+                      type="button" onClick={analyzeRepo}
+                      disabled={analyzingRepo || !selectedRepoUrl}
+                      className={cn(
+                        'inline-flex items-center justify-center gap-2 h-10 px-3 rounded-xl text-[12px] font-semibold border transition-all duration-200',
+                        'border-emerald-500/25 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10',
+                        (analyzingRepo || !selectedRepoUrl) && 'opacity-40 cursor-not-allowed',
+                      )}
+                    >
+                      {analyzingRepo
+                        ? <><motion.span className="w-3.5 h-3.5 rounded-full border border-emerald-400/30 border-t-emerald-400"
+                            animate={{ rotate: 360 }} transition={{ duration: 0.75, repeat: Infinity, ease: 'linear' }} />
+                          Analyzing…</>
+                        : <><FileSearch className="w-3.5 h-3.5" /> Analyze Repo</>}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={runReadinessScan}
+                      disabled={readinessLoading || !selectedRepoUrl}
+                      className={cn(
+                        'inline-flex items-center justify-center gap-2 h-10 px-3 rounded-xl text-[12px] font-semibold border transition-all duration-200',
+                        'border-amber-500/25 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10',
+                        (readinessLoading || !selectedRepoUrl) && 'opacity-40 cursor-not-allowed',
+                      )}
+                    >
+                      {readinessLoading
+                        ? <><motion.span className="w-3.5 h-3.5 rounded-full border border-amber-400/30 border-t-amber-400"
+                            animate={{ rotate: 360 }} transition={{ duration: 0.75, repeat: Infinity, ease: 'linear' }} />
+                          Scanning…</>
+                        : <><ShieldAlert className="w-3.5 h-3.5" /> Readiness + Secret Scan</>}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="px-4 py-4 text-[12px] text-muted-foreground/80 leading-relaxed">
+                  Connect GitHub to browse repositories and generate an accurate CI/CD pipeline from real project files.
+                </p>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-border/80 bg-card/90 p-4 space-y-3">
               <div>
                 <label className={labelCls}>Repository Analysis</label>
-                <div className="rounded-xl border border-border bg-secondary/20 px-3 py-2.5">
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <Box className="w-3 h-3" />
+                <div className="rounded-xl border border-border/70 bg-secondary/25 px-3.5 py-3">
+                  <div className="flex items-start gap-2.5 text-[12px] text-muted-foreground leading-relaxed">
+                    <Box className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-sky-600 dark:text-sky-400" />
                     <span>{stackSummary}</span>
                   </div>
                 </div>
               </div>
 
               {readiness && (
-                <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3 sm:p-3.5 space-y-2.5">
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3.5 space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-amber-300">Deployment Readiness</p>
-                    <span className="text-[11px] font-semibold text-amber-200">{readiness.readinessScore}/100 • {readiness.maturity}</span>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-amber-700 dark:text-amber-300">Deployment Readiness</p>
+                    <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-200">{readiness.readinessScore}/100 · {readiness.maturity}</span>
                   </div>
-
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {readiness.checks.slice(0, 4).map((check) => (
                       <div key={check.id} className="flex items-start gap-2 text-[11px]">
-                        <span className={cn('mt-0.5 h-2 w-2 rounded-full', check.status === 'pass' ? 'bg-emerald-400' : 'bg-amber-400')} />
+                        <span className={cn('mt-1 h-2 w-2 rounded-full flex-shrink-0', check.status === 'pass' ? 'bg-emerald-400' : 'bg-amber-400')} />
                         <p className="text-muted-foreground leading-relaxed">
                           <span className="text-foreground font-medium">{check.title}:</span> {check.details}
                         </p>
                       </div>
                     ))}
                   </div>
-
-                  {readiness.secretRisks.length > 0 ? (
-                    <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-2.5 py-2">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-red-300 mb-1">Secret Risk Signals</p>
-                      <p className="text-[11px] text-red-200/95 leading-relaxed">
-                        {readiness.secretRisks.length} potential secret exposure signal(s) found. Review before deployment.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-2.5 py-2">
-                      <p className="text-[11px] text-emerald-300">No obvious secret file patterns detected in repository tree.</p>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -600,24 +600,23 @@ export default function CicdPage() {
                     initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
                     className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl bg-red-500/8 border border-red-500/15"
                   >
-                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-[12px] sm:text-[13px] text-red-400">{error}</p>
+                    <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-[12px] text-red-600 dark:text-red-400">{error}</p>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <div className="space-y-2">
+              <div className="space-y-2 pt-1">
                 <button
                   type="button"
                   onClick={generatePipeline}
                   disabled={loading || !selectedRepoUrl}
                   className={cn(
-                    'w-full h-10 sm:h-11 rounded-xl font-bold text-[13px] sm:text-[13.5px] text-white',
+                    'w-full h-11 rounded-xl font-bold text-[13.5px] text-white',
                     'flex items-center justify-center gap-2',
-                    'bg-brand-500 hover:bg-brand-600 active:scale-[0.99]',
-                    'transition-all duration-200 shadow-lg shadow-brand-500/20',
+                    'bg-sky-600 hover:bg-sky-500 active:scale-[0.99]',
+                    'transition-all duration-200 shadow-lg shadow-sky-600/20',
                     'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2',
                   )}
                 >
                   {loading ? (
@@ -627,74 +626,76 @@ export default function CicdPage() {
                         animate={{ rotate: 360 }}
                         transition={{ duration: 0.75, repeat: Infinity, ease: 'linear' }}
                       />
-                      Processing…
+                      Generating…
                     </>
                   ) : (
                     <>
-                      <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <Play className="w-4 h-4" />
                       Generate CI/CD Pipeline
                     </>
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={saveHistory}
-                  disabled={loading || pipelineFiles.length === 0}
-                  className={cn(
-                    'w-full h-9 rounded-xl text-[12px] sm:text-[12.5px] font-semibold',
-                    'border border-brand-500/30 text-brand-400 hover:bg-brand-500/10 transition-all duration-200',
-                    'inline-flex items-center justify-center gap-1.5',
-                    'disabled:opacity-50 disabled:cursor-not-allowed',
-                  )}
-                >
-                  <Save className="w-3.5 h-3.5" /> Save History
-                </button>
-
-                <button
-                  type="button"
-                  onClick={clearCurrent}
-                  disabled={loading || pipelineFiles.length === 0}
-                  className={cn(
-                    'w-full h-9 rounded-xl text-[12px] sm:text-[12.5px] font-semibold',
-                    'border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200',
-                    'disabled:opacity-50 disabled:cursor-not-allowed',
-                  )}
-                >
-                  Clear Current Output
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={saveHistory}
+                    disabled={loading || pipelineFiles.length === 0}
+                    className={cn(
+                      'h-10 rounded-xl text-[12px] font-semibold',
+                      'border border-sky-500/30 text-sky-600 dark:text-sky-400 hover:bg-sky-500/10 transition-all duration-200',
+                      'inline-flex items-center justify-center gap-1.5',
+                      'disabled:opacity-50 disabled:cursor-not-allowed',
+                    )}
+                  >
+                    <Save className="w-3.5 h-3.5" /> Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearCurrent}
+                    disabled={loading || pipelineFiles.length === 0}
+                    className={cn(
+                      'h-10 rounded-xl text-[12px] font-semibold',
+                      'border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200',
+                      'disabled:opacity-50 disabled:cursor-not-allowed',
+                    )}
+                  >
+                    Clear
+                  </button>
+                </div>
 
                 {historyNotice && (
-                  <p className="text-[11px] text-brand-400">{historyNotice}</p>
+                  <p className="text-[11px] text-sky-600 dark:text-sky-400">{historyNotice}</p>
                 )}
               </div>
-            </div>
+            </section>
 
-            <div className="rounded-2xl border border-border bg-card p-3.5 sm:p-4">
-              <p className="text-[10px] sm:text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground/45 mb-3">
-                Output
+            <section className="rounded-2xl border border-border/80 bg-card/90 p-4 hidden xl:block">
+              <p className="text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground/45 mb-3">
+                Pipeline includes
               </p>
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {[
-                  { icon: Workflow, label: 'Repo-specific GitHub Actions workflow', color: 'text-violet-400' },
-                  { icon: Box, label: 'Pipeline derived from detected scripts', color: 'text-blue-400' },
-                  { icon: GitBranch, label: 'Uses selected branch and repository structure', color: 'text-emerald-400' },
+                  { icon: Workflow, label: 'Repo-specific GitHub Actions workflow', color: 'text-violet-600 dark:text-violet-400' },
+                  { icon: Box, label: 'Scripts detected from package.json', color: 'text-sky-600 dark:text-sky-400' },
+                  { icon: GitBranch, label: 'Branch and deploy target aware', color: 'text-emerald-600 dark:text-emerald-400' },
                 ].map(item => (
                   <div key={item.label} className="flex items-center gap-2.5">
-                    <item.icon className={cn('w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0', item.color)} />
-                    <p className="text-[11px] sm:text-[12px] text-muted-foreground">{item.label}</p>
+                    <item.icon className={cn('w-3.5 h-3.5 flex-shrink-0', item.color)} />
+                    <p className="text-[12px] text-muted-foreground">{item.label}</p>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
+            </section>
+          </aside>
 
+          {/* ── Output ───────────────────────────────────────────────── */}
           <div className="min-w-0">
             <AnimatePresence mode="wait">
               {loading && (
                 <motion.div
                   key="loader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="rounded-2xl border border-border bg-card p-8 sm:p-10 min-h-[380px] sm:min-h-[420px] flex items-center justify-center"
+                  className="rounded-2xl border border-border bg-card p-10 min-h-[420px] flex items-center justify-center"
                 >
                   <AiLoader message="Building repository-specific CI/CD pipeline…" />
                 </motion.div>
@@ -702,15 +703,22 @@ export default function CicdPage() {
 
               {!loading && pipelineFiles.length > 0 && (
                 <motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                  <GithubShipPanel
+                    enabled={Boolean(githubStatus?.connected && selectedRepoUrl)}
+                    repoUrl={selectedRepoUrl}
+                    branch={branch || 'main'}
+                    versionId={currentVersionId}
+                    files={pipelineFiles}
+                  />
+
                   {diffSummary && (
-                    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-3.5 sm:p-4">
+                    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-300">Diff Preview</p>
-                        <p className="text-[11px] text-cyan-100/90">
-                          New: {diffSummary.added} • Changed: {diffSummary.changed} • Unchanged: {diffSummary.unchanged}
+                        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-sky-700 dark:text-cyan-300">Diff Preview</p>
+                        <p className="text-[11px] text-sky-800 dark:text-cyan-100/90">
+                          New: {diffSummary.added} · Changed: {diffSummary.changed} · Unchanged: {diffSummary.unchanged}
                         </p>
                       </div>
-
                       {diffSummary.changedPaths.length > 0 ? (
                         <div className="space-y-1.5">
                           {diffSummary.changedPaths.slice(0, 4).map((item) => (
@@ -732,14 +740,13 @@ export default function CicdPage() {
                     <PipelinePanel key={file.id || file.path} file={file} />
                   ))}
 
-                  <div className="rounded-3xl border border-amber-500/35 bg-amber-500/10 px-10 sm:px-12 py-6 sm:py-7 shadow-lg shadow-amber-500/8">
-                    <p className="text-[12px] sm:text-[19px] font-extrabold uppercase tracking-[0.09em] text-amber-300 mb-2">
+                  <div className="rounded-2xl border border-amber-500/30 bg-amber-500/8 px-5 sm:px-6 py-5">
+                    <p className="text-[12px] font-extrabold uppercase tracking-[0.09em] text-amber-700 dark:text-amber-300 mb-2">
                       Precaution
                     </p>
-                    <p className="text-[13px] sm:text-[14px] text-amber-200/95 leading-[1.75]">
-                      Review this pipeline carefully before using it in production. Verify image names, service/container names,
-                      branch rules, secret keys, environment variables, ports, cloud/deploy target settings, and SSH or cloud credentials.
-                      Update anything repository-specific as needed.
+                    <p className="text-[13px] text-amber-800 dark:text-amber-200/95 leading-relaxed">
+                      Review this pipeline carefully before production use. Verify image names, secrets, branch rules,
+                      ports, and deploy credentials for your repository.
                     </p>
                   </div>
                 </motion.div>
@@ -749,23 +756,23 @@ export default function CicdPage() {
                 <motion.div
                   key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className={cn(
-                    'rounded-2xl border border-dashed border-border bg-card/30',
+                    'rounded-2xl border border-dashed border-border/80 bg-card/40',
                     'flex flex-col items-center justify-center text-center',
-                    'min-h-[320px] sm:min-h-[420px] p-8 sm:p-10',
+                    'min-h-[420px] p-8 sm:p-12',
                   )}
                 >
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-brand-500/8 border border-brand-500/20 flex items-center justify-center mb-3 sm:mb-4">
-                    <Workflow className="w-5 h-5 sm:w-6 sm:h-6 text-brand-400" />
+                  <div className="w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center mb-4">
+                    <Workflow className="w-6 h-6 text-sky-600 dark:text-sky-400" />
                   </div>
-                  <p className="text-[13px] sm:text-[14px] font-semibold text-foreground mb-1.5">No CI/CD pipeline yet</p>
-                  <p className="text-[12px] sm:text-[13px] text-muted-foreground max-w-[240px] leading-relaxed">
-                    Connect GitHub, select a repository, run <strong className="text-foreground font-semibold">Analyze Repo</strong>, then generate CI/CD.
+                  <p className="text-[15px] font-semibold text-foreground mb-1.5">No CI/CD pipeline yet</p>
+                  <p className="text-[13px] text-muted-foreground max-w-[280px] leading-relaxed">
+                    Select a repository, run <strong className="text-foreground font-semibold">Analyze Repo</strong>, then generate your pipeline.
                   </p>
 
                   {githubStatus?.connected && selectedRepoUrl && (
-                    <div className="mt-4 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                      Using {selectedRepoUrl.split('/').slice(-2).join('/')} ({branch || 'main'})
+                    <div className="mt-5 flex items-center gap-1.5 text-[12px] text-muted-foreground rounded-full border border-border/70 bg-secondary/40 px-3 py-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      {selectedRepoUrl.split('/').slice(-2).join('/')} · {branch || 'main'}
                     </div>
                   )}
 
@@ -773,13 +780,13 @@ export default function CicdPage() {
                     <button
                       type="button" onClick={startGithubOauth} disabled={connecting}
                       className={cn(
-                        'mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-semibold border transition-all duration-200',
-                        'border-cyan-500/30 text-cyan-400 bg-cyan-500/5 hover:bg-cyan-500/10',
+                        'mt-5 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold border transition-all duration-200',
+                        'border-cyan-500/30 text-sky-600 dark:text-cyan-400 bg-cyan-500/5 hover:bg-cyan-500/10',
                         connecting && 'opacity-50 cursor-not-allowed',
                       )}
                     >
-                      <Sparkles className="w-3 h-3" />
-                      {connecting ? 'Connecting…' : 'Connect GitHub for better output'}
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {connecting ? 'Connecting…' : 'Connect GitHub'}
                     </button>
                   )}
                 </motion.div>

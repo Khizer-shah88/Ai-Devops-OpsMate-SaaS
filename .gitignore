@@ -1,0 +1,15 @@
+.env
+.env.local
+.env.*.local
+node_modules/
+dist/
+.next/
+coverage/
+*.log
+.DS_Store
+backend/.local-pg/
+backend/node_modules/
+frontend/node_modules/
+frontend/.next/
+backend/dist/
+*.tsbuildinfo

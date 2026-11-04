@@ -12,6 +12,7 @@ import {
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { AiLoader } from '@/components/shared/AiLoader';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { debugApi } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { cn } from '@/lib/utils';
@@ -80,18 +81,18 @@ function DebugResultPanel({ result }: { result: DebugResult }) {
  >
  {/* Explanation */}
  <div className="rounded-3xl border border-amber-500/20 bg-card overflow-hidden shadow-sm">
- <div className="flex items-center gap-3.5 px-6 py-4 border-b border-amber-500/15 bg-amber-500/auto">
- <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 " />
- <h3 className="text-[15px] font-bold text-amber-600 dark:text-amber-400 ">What Happened</h3>
+ <div className="flex items-center gap-3.5 px-6 py-4 border-b border-amber-500/15 bg-amber-500/10">
+ <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+ <h3 className="text-[15px] font-bold text-amber-600 dark:text-amber-400">What Happened</h3>
  </div>
  <p className="px-6 py-5 text-[15px] font-medium text-foreground leading-relaxed">{result.explanation}</p>
  </div>
 
  {/* Root Cause */}
  <div className="rounded-3xl border border-rose-500/20 bg-card overflow-hidden shadow-sm">
- <div className="flex items-center gap-3.5 px-6 py-4 border-b border-rose-500/15 bg-rose-500/auto">
- <Bug className="w-5 h-5 text-rose-600 dark:text-rose-400 " />
- <h3 className="text-[15px] font-bold text-rose-600 dark:text-rose-400 ">Root Cause</h3>
+ <div className="flex items-center gap-3.5 px-6 py-4 border-b border-rose-500/15 bg-rose-500/10">
+ <Bug className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+ <h3 className="text-[15px] font-bold text-rose-600 dark:text-rose-400">Root Cause</h3>
  </div>
  <div className="px-4 sm:px-6 py-5 flex items-start gap-3.5">
  <ChevronRight className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
@@ -102,9 +103,9 @@ function DebugResultPanel({ result }: { result: DebugResult }) {
  {/* Fix Steps */}
  {result.fixSteps.length > 0 && (
  <div className="rounded-3xl border border-emerald-500/20 bg-card overflow-hidden shadow-sm">
- <div className="flex items-center gap-3.5 px-6 py-4 border-b border-emerald-500/15 bg-emerald-500/auto">
- <Wrench className="w-5 h-5 text-emerald-600 dark:text-emerald-400 " />
- <h3 className="text-[15px] font-bold text-emerald-600 dark:text-emerald-400 ">How to Fix ({result.fixSteps.length} steps)</h3>
+ <div className="flex items-center gap-3.5 px-6 py-4 border-b border-emerald-500/15 bg-emerald-500/10">
+ <Wrench className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+ <h3 className="text-[15px] font-bold text-emerald-600 dark:text-emerald-400">How to Fix ({result.fixSteps.length} steps)</h3>
  </div>
  <div className="px-4 sm:px-6 py-5 space-y-4">
  {result.fixSteps.map((step, i) => (
@@ -117,7 +118,7 @@ function DebugResultPanel({ result }: { result: DebugResult }) {
  {/* Related Concepts */}
  {result.relatedConcepts.length > 0 && (
  <div className="rounded-3xl border border-brand/20 bg-card overflow-hidden shadow-sm">
- <div className="flex items-center gap-3.5 px-6 py-4 border-b border-brand/15 bg-brand/auto">
+ <div className="flex items-center gap-3.5 px-6 py-4 border-b border-brand/15 bg-brand/10">
  <BookOpen className="w-5 h-5 text-brand" />
  <h3 className="text-[15px] font-bold text-brand">Related Concepts</h3>
  </div>
@@ -226,15 +227,16 @@ export default function DebugPage() {
 
  return (
  <AppShell>
- <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-10 max-w-[1400px] mx-auto">
+ <div className="space-y-8">
  {/* Header */}
- <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 md:gap-0 mb-8 md:mb-10">
+ <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
  <PageHeader
  icon={Bug}
  title="Error Debugger"
  description="Paste error logs or stack traces for instant AI-powered diagnosis and fix steps."
  badge="AI"
  />
+ <ThemeToggle className="self-end md:self-auto" />
  </div>
 
  <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">

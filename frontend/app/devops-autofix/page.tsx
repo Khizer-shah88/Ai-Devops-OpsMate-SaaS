@@ -22,6 +22,7 @@ import {
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { RepoSelect } from '@/components/shared/RepoSelect';
 import { devopsApi } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { cn } from '@/lib/utils';
@@ -81,7 +82,7 @@ function CopyButton({ text }: { text: string }) {
       className={cn(
         'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors',
         copied
-          ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
+          ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
           : 'bg-secondary/60 border-border text-muted-foreground hover:text-foreground hover:bg-secondary',
       )}
     >
@@ -104,11 +105,11 @@ function HealthBadge({ check }: { check: RepoHealthCheck }) {
     >
       <div className="flex items-center gap-2">
         {pass ? (
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
         ) : (
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
         )}
-        <p className={cn('text-[12.5px] font-semibold', pass ? 'text-emerald-400' : 'text-amber-400')}>
+        <p className={cn('text-[12.5px] font-semibold', pass ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400')}>
           {check.title}
         </p>
       </div>
@@ -422,7 +423,7 @@ export default function DevopsAutoFixPage() {
 
   return (
     <AppShell>
-      <div className="max-w-7xl mx-auto px-3 sm:px-5 py-5 sm:py-7 space-y-5 sm:space-y-6">
+      <div className="max-w-7xl mx-auto space-y-5 sm:space-y-6">
         <div className="flex items-start justify-between gap-3">
           <PageHeader
             icon={Wand2}
@@ -454,8 +455,8 @@ export default function DevopsAutoFixPage() {
                       className={cn(
                         'text-[11px] px-2 py-1 rounded-full border font-semibold',
                         githubStatus?.connected
-                          ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25'
-                          : 'text-amber-400 bg-amber-500/10 border-amber-500/25',
+                          ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/25'
+                          : 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/25',
                       )}
                     >
                       {githubStatus?.connected ? 'Connected' : 'Not connected'}
@@ -480,23 +481,16 @@ export default function DevopsAutoFixPage() {
 
                 <div>
                   <label className={labelClass}>Repository</label>
-                  <select
+                  <RepoSelect
+                    repos={repos}
                     value={selectedRepoUrl}
-                    onChange={(e) => {
-                      setSelectedRepoUrl(e.target.value);
-                      const found = repos.find((repo) => repo.htmlUrl === e.target.value);
-                      if (found) setBranch(found.defaultBranch || 'main');
-                    }}
-                    className={inputClass}
                     disabled={loadingRepos || !githubStatus?.connected}
-                  >
-                    {!repos.length && <option value="">No repositories available</option>}
-                    {repos.map((repo) => (
-                      <option key={repo.id} value={repo.htmlUrl}>
-                        {repo.fullName}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder={repos.length ? 'Select repository…' : 'No repositories available'}
+                    onChange={(url, repo) => {
+                      setSelectedRepoUrl(url);
+                      if (repo) setBranch(repo.defaultBranch || 'main');
+                    }}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -529,7 +523,7 @@ export default function DevopsAutoFixPage() {
                   type="button"
                   onClick={analyzeRepository}
                   disabled={analyzingRepo || !selectedRepoUrl}
-                  className="w-full h-10 rounded-xl border border-cyan-500/35 bg-cyan-500/12 text-cyan-400 text-[13px] font-semibold hover:bg-cyan-500/18 disabled:opacity-60 transition"
+                  className="w-full h-10 rounded-xl border border-cyan-500/35 bg-cyan-500/12 text-sky-600 dark:text-cyan-400 text-[13px] font-semibold hover:bg-cyan-500/18 disabled:opacity-60 transition"
                 >
                   {analyzingRepo ? 'Analyzing repository...' : 'Analyze Repository'}
                 </button>
@@ -537,7 +531,7 @@ export default function DevopsAutoFixPage() {
 
               <div className="rounded-2xl border border-border bg-card/70 p-4 space-y-3">
                 <div className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-                  <Sparkles className="w-4 h-4 text-violet-400" />
+                  <Sparkles className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                   Step 2: AI Input Payload
                 </div>
                 <pre className="rounded-xl border border-border bg-secondary/30 p-3 text-[11.5px] leading-[1.55] max-h-[230px] overflow-auto whitespace-pre-wrap">
@@ -577,7 +571,7 @@ export default function DevopsAutoFixPage() {
               {historyNotice && <p className="text-[12px] text-brand-400">{historyNotice}</p>}
 
               {!!error && (
-                <div className="rounded-xl border border-rose-500/20 bg-rose-500/8 px-3.5 py-3 text-[12px] text-rose-300">
+                <div className="rounded-xl border border-rose-500/20 bg-rose-500/8 px-3.5 py-3 text-[12px] text-rose-700 dark:text-rose-300">
                   {error}
                 </div>
               )}
@@ -606,8 +600,8 @@ export default function DevopsAutoFixPage() {
                         className={cn(
                           'rounded-xl border px-3 py-2 text-[12px] font-medium',
                           active
-                            ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
-                            : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300',
+                            ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                            : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
                         )}
                       >
                         {active ? 'Issue: ' : 'OK: '}
@@ -635,7 +629,7 @@ export default function DevopsAutoFixPage() {
 
               <div className="rounded-2xl border border-border bg-card/70 p-4 space-y-3.5">
                 <div className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-                  <FileCode2 className="w-4 h-4 text-emerald-400" />
+                  <FileCode2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   Step 3: Generated Output
                 </div>
 
@@ -654,11 +648,11 @@ export default function DevopsAutoFixPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-3.5">
-                        <p className="text-[11px] uppercase tracking-[0.1em] text-cyan-400 font-semibold mb-1.5">Cost Estimate</p>
+                        <p className="text-[11px] uppercase tracking-[0.1em] text-sky-600 dark:text-cyan-400 font-semibold mb-1.5">Cost Estimate</p>
                         <p className="text-[12.5px] text-foreground/90 leading-relaxed">{costEstimate || 'No estimate available.'}</p>
                       </div>
                       <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3.5">
-                        <p className="text-[11px] uppercase tracking-[0.1em] text-amber-400 font-semibold mb-1.5">Security Notes</p>
+                        <p className="text-[11px] uppercase tracking-[0.1em] text-amber-600 dark:text-amber-400 font-semibold mb-1.5">Security Notes</p>
                         <p className="text-[12.5px] text-foreground/90 leading-relaxed whitespace-pre-wrap">
                           {securityFindings || 'No findings available.'}
                         </p>
@@ -678,7 +672,7 @@ export default function DevopsAutoFixPage() {
           className="rounded-3xl border border-border bg-card overflow-hidden"
         >
           <div className="px-4 sm:px-5 py-3.5 border-b border-border bg-secondary/20 flex items-center gap-2">
-            <TerminalSquare className="w-4 h-4 text-rose-400" />
+            <TerminalSquare className="w-4 h-4 text-rose-600 dark:text-rose-400" />
             <h2 className="text-[14px] font-semibold text-foreground">Real-Time CI/CD Debugger</h2>
           </div>
 
@@ -708,7 +702,7 @@ export default function DevopsAutoFixPage() {
                 type="button"
                 onClick={runRealtimeDebugger}
                 disabled={debugging}
-                className="w-full h-10 rounded-xl border border-rose-500/35 bg-rose-500/12 text-rose-300 text-[13px] font-semibold hover:bg-rose-500/18 disabled:opacity-60 transition flex items-center justify-center gap-2"
+                className="w-full h-10 rounded-xl border border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300 text-[13px] font-semibold hover:bg-rose-500/18 disabled:opacity-60 transition flex items-center justify-center gap-2"
               >
                 {debugging ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitBranch className="w-4 h-4" />}
                 {debugging ? 'Analyzing in real time...' : 'Run CI/CD Debugger'}
@@ -751,11 +745,11 @@ export default function DevopsAutoFixPage() {
                       <p className="text-[13px] text-foreground/90 leading-relaxed">{debugResult.explanation}</p>
                     </div>
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.1em] text-rose-400 font-semibold mb-1.5">Root Cause</p>
+                      <p className="text-[11px] uppercase tracking-[0.1em] text-rose-600 dark:text-rose-400 font-semibold mb-1.5">Root Cause</p>
                       <p className="text-[13px] text-foreground/90 leading-relaxed">{debugResult.rootCause}</p>
                     </div>
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.1em] text-emerald-400 font-semibold mb-1.5">Fix Steps</p>
+                      <p className="text-[11px] uppercase tracking-[0.1em] text-emerald-600 dark:text-emerald-400 font-semibold mb-1.5">Fix Steps</p>
                       <ol className="space-y-1.5 list-decimal list-inside">
                         {debugResult.fixSteps.map((step, index) => (
                           <li key={`${step}-${index}`} className="text-[13px] text-foreground/90 leading-relaxed">

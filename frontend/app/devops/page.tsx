@@ -19,6 +19,8 @@ import {
   Save,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
+import { RepoSelect } from '@/components/shared/RepoSelect';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { devopsApi } from '@/lib/api';
 import { cn, formatDate } from '@/lib/utils';
 import type {
@@ -611,22 +613,22 @@ export default function DevopsPage() {
 
   return (
     <AppShell>
-      <div className="min-h-screen px-4 sm:px-6 py-8 bg-[radial-gradient(circle_at_15%_15%,rgba(14,116,144,0.14),transparent_45%),radial-gradient(circle_at_85%_20%,rgba(16,185,129,0.12),transparent_45%),radial-gradient(circle_at_50%_85%,rgba(249,115,22,0.08),transparent_45%)]">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-3xl border border-border bg-card/70 backdrop-blur-xl p-6 md:p-8">
+      <div className="space-y-6">
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-cyan-400 font-bold">OpsMate DevOps Studio</p>
-                <h1 className="text-2xl md:text-3xl font-extrabold mt-1">GitHub-Native AI DevOps Engineer</h1>
+                <p className="text-xs uppercase tracking-[0.2em] text-sky-600 dark:text-cyan-400 font-bold">DevMat DevOps Studio</p>
+                <h1 className="text-2xl md:text-3xl font-extrabold mt-1 text-foreground">GitHub-Native AI DevOps Engineer</h1>
                 <p className="text-sm text-muted-foreground mt-2 max-w-3xl">
                   Connect GitHub, auto-analyze repositories, get prioritized fixes, and generate deployment-ready CI/CD + infra in one workflow.
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                <ThemeToggle />
                 <select
                   value={cloud}
                   onChange={(e) => setCloud(e.target.value as CloudTarget)}
-                  className="rounded-xl border border-border bg-secondary/70 px-3 py-2 text-sm"
+                  className="rounded-xl border border-border bg-secondary/70 px-3 py-2 text-sm text-foreground"
                 >
                   {CLOUDS.map((c) => (
                     <option key={c.value} value={c.value}>
@@ -639,7 +641,7 @@ export default function DevopsPage() {
           </motion.div>
 
           {error ? (
-            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
               {error}
             </div>
           ) : null}
@@ -647,7 +649,7 @@ export default function DevopsPage() {
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
             <div className="xl:col-span-1 rounded-2xl border border-border bg-card/80 p-5 space-y-4">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <GitBranch className="w-4 h-4 text-cyan-400" /> GitHub Connection
+                <GitBranch className="w-4 h-4 text-sky-600 dark:text-cyan-400" /> GitHub Connection
               </div>
 
               <div className="rounded-xl border border-border bg-secondary/30 p-3 text-sm">
@@ -667,7 +669,7 @@ export default function DevopsPage() {
                   disabled={connectingGithub}
                   className={cn(
                     'inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold',
-                    'border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10',
+                    'border-cyan-500/30 text-sky-700 dark:text-cyan-300 hover:bg-cyan-500/10',
                     connectingGithub && 'opacity-60 cursor-not-allowed',
                   )}
                 >
@@ -700,28 +702,20 @@ export default function DevopsPage() {
 
             <div className="xl:col-span-2 rounded-2xl border border-border bg-card/80 p-5 space-y-4">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Rocket className="w-4 h-4 text-emerald-400" /> Repository Onboarding
+                <Rocket className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Repository Onboarding
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="md:col-span-2">
-                  <select
+                  <RepoSelect
+                    repos={repos}
                     value={selectedRepoUrl}
-                    onChange={(e) => {
-                      const url = e.target.value;
+                    placeholder="Select connected repository…"
+                    onChange={(url, repo) => {
                       setSelectedRepoUrl(url);
-                      const selected = repos.find((repo) => repo.htmlUrl === url);
-                      if (selected) setBranch(selected.defaultBranch || 'main');
+                      if (repo) setBranch(repo.defaultBranch || 'main');
                     }}
-                    className="w-full rounded-xl border border-border bg-black px-3 py-2 text-sm"
-                  >
-                    <option value="">Select connected repository</option>
-                    {repos.map((repo) => (
-                      <option key={repo.id} value={repo.htmlUrl}>
-                        {repo.fullName} {repo.private ? '(private)' : '(public)'}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
                 <input
                   value={branch}
@@ -742,7 +736,7 @@ export default function DevopsPage() {
                 onClick={onboardRepo}
                 disabled={onboarding}
                 className={cn(
-                  'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10',
+                  'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10',
                   onboarding && 'opacity-60 cursor-not-allowed',
                 )}
               >
@@ -780,7 +774,7 @@ export default function DevopsPage() {
                     onClick={generateInfra}
                     disabled={generating}
                     className={cn(
-                      'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10',
+                      'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-cyan-500/30 text-sky-700 dark:text-cyan-300 hover:bg-cyan-500/10',
                       generating && 'opacity-60 cursor-not-allowed',
                     )}
                   >
@@ -790,7 +784,7 @@ export default function DevopsPage() {
                     onClick={saveHistory}
                     disabled={generating || files.length === 0}
                     className={cn(
-                      'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10',
+                      'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-cyan-500/30 text-sky-700 dark:text-cyan-300 hover:bg-cyan-500/10',
                       (generating || files.length === 0) && 'opacity-60 cursor-not-allowed',
                     )}
                   >
@@ -810,7 +804,7 @@ export default function DevopsPage() {
               </div>
 
               {historyNotice ? (
-                <p className="text-[12px] text-cyan-300">{historyNotice}</p>
+                <p className="text-[12px] text-sky-700 dark:text-cyan-300">{historyNotice}</p>
               ) : null}
 
               <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2.5">
@@ -872,8 +866,8 @@ export default function DevopsPage() {
               </div>
 
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
-                <p className="text-[12px] font-bold uppercase tracking-[0.09em] text-amber-300 mb-2">Precaution</p>
-                <p className="text-[13px] text-amber-200/95 leading-relaxed">
+                <p className="text-[12px] font-bold uppercase tracking-[0.09em] text-amber-700 dark:text-amber-300 mb-2">Precaution</p>
+                <p className="text-[13px] text-amber-800 dark:text-amber-200/95 leading-relaxed">
                   Review generated files before deployment. Update image/service names, domain/host values, secret names,
                   environment variables, branch filters, cloud account IDs, and deploy credentials for your repository.
                 </p>
@@ -881,15 +875,15 @@ export default function DevopsPage() {
             </motion.div>
           ) : null}
 
-          <div className="rounded-3xl border border-cyan-500/20 bg-[linear-gradient(135deg,rgba(14,116,144,0.12),rgba(15,23,42,0.2))] p-6 sm:p-7 space-y-4 shadow-2xl shadow-cyan-900/20">
-            <div className="flex items-center justify-between gap-3">
+          <div className="rounded-3xl border border-cyan-500/25 bg-card p-6 sm:p-7 space-y-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-2.5 text-base font-semibold text-foreground">
                 <div className="w-8 h-8 rounded-xl border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center">
-                  <Bot className="w-4.5 h-4.5 text-cyan-300" />
+                  <Bot className="w-4.5 h-4.5 text-sky-700 dark:text-cyan-300" />
                 </div>
                 Pro DevOps Engineer Chat
               </div>
-              <p className="text-[12px] text-cyan-100/70">Ask architecture, CI/CD, security, or incident questions</p>
+              <p className="text-[12px] text-sky-700 dark:text-cyan-200/70">Ask architecture, CI/CD, security, or incident questions</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -898,22 +892,22 @@ export default function DevopsPage() {
                   key={prompt}
                   type="button"
                   onClick={() => setChatInput(prompt)}
-                  className="px-3 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-[12px] text-cyan-100/90 hover:bg-cyan-500/20 transition-colors"
+                  className="px-3 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-[12px] text-sky-800 dark:text-cyan-100/90 hover:bg-cyan-500/20 transition-colors"
                 >
                   {prompt}
                 </button>
               ))}
             </div>
 
-            <div className="rounded-2xl border border-cyan-500/20 bg-slate-950/35 p-4 sm:p-5 h-[380px] sm:h-[440px] overflow-y-auto space-y-3">
+            <div className="rounded-2xl border border-border bg-secondary/40 p-4 sm:p-5 h-[380px] sm:h-[440px] overflow-y-auto space-y-3">
               {chatMessages.map((message) => (
                 <div
                   key={message.id}
                   className={cn(
                     'max-w-[92%] rounded-2xl px-4 py-3',
                     message.role === 'assistant'
-                      ? 'bg-cyan-500/12 border border-cyan-500/35 text-cyan-50 shadow-sm shadow-cyan-950/40'
-                      : 'ml-auto bg-slate-800/80 border border-slate-600/50 text-slate-100',
+                      ? 'bg-cyan-500/10 border border-cyan-500/30 text-sky-900 dark:text-cyan-50'
+                      : 'ml-auto bg-card border border-border text-foreground shadow-sm',
                   )}
                 >
                   <div className="flex items-center gap-2 mb-1.5">
@@ -927,7 +921,7 @@ export default function DevopsPage() {
               ))}
 
               {chatting ? (
-                <div className="max-w-[92%] rounded-2xl px-4 py-3 bg-cyan-500/10 border border-cyan-500/25 text-cyan-100">
+                <div className="max-w-[92%] rounded-2xl px-4 py-3 bg-cyan-500/10 border border-cyan-500/25 text-sky-800 dark:text-cyan-100">
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span className="text-sm">Thinking through your DevOps question…</span>
@@ -940,16 +934,16 @@ export default function DevopsPage() {
               <textarea
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                className="w-full min-h-[120px] rounded-2xl border border-cyan-500/25 bg-slate-900/50 p-4 text-sm text-slate-100 placeholder:text-slate-400"
+                className="w-full min-h-[120px] rounded-2xl border border-border bg-background p-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500/40"
                 placeholder="Ask anything, for example: My GitHub Actions deploy fails with permission denied on SSH key"
               />
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <p className="text-[12px] text-muted-foreground">Tip: include error logs, cloud target, and what changed recently.</p>
                 <button
                   onClick={askDevopsAssistant}
                   disabled={chatting || !chatInput.trim()}
                   className={cn(
-                    'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-cyan-500/35 text-cyan-300 hover:bg-cyan-500/10',
+                    'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-cyan-500/35 text-sky-700 dark:text-cyan-300 hover:bg-cyan-500/10',
                     (chatting || !chatInput.trim()) && 'opacity-60 cursor-not-allowed',
                   )}
                 >
@@ -961,7 +955,7 @@ export default function DevopsPage() {
 
           <div className="rounded-2xl border border-border bg-card/80 p-5 space-y-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <TerminalSquare className="w-4 h-4 text-amber-400" /> Incident Log Doctor
+              <TerminalSquare className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Incident Log Doctor
             </div>
             <textarea
               value={logInput}
@@ -981,7 +975,6 @@ export default function DevopsPage() {
             </button>
             {logResult ? <p className="text-sm text-muted-foreground whitespace-pre-line">{logResult}</p> : null}
           </div>
-        </div>
       </div>
     </AppShell>
   );

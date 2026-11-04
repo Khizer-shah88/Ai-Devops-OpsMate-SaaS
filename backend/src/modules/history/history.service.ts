@@ -5,11 +5,15 @@ import { PrismaService } from '../../database/prisma/prisma.service';
 export class HistoryService {
 	constructor(private readonly prisma: PrismaService) {}
 
-	async getHistory(userId: string) {
+	async getHistory(userId: string, limit?: number) {
+		const take = Number.isFinite(limit) && (limit as number) > 0
+			? Math.min(Math.floor(limit as number), 100)
+			: 100;
+
 		const items = await this.prisma.request.findMany({
 			where: { userId },
 			orderBy: { createdAt: 'desc' },
-			take: 100,
+			take,
 		});
 
 		return items.map((item) => ({

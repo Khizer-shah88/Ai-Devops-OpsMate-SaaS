@@ -13,12 +13,14 @@ export class HistoryController {
 	getHistory(
 		@CurrentUser() user: JwtUser,
 		@Query('stats') stats?: string,
+		@Query('limit') limit?: string,
 	) {
 		if (stats === 'true') {
 			return this.historyService.getUsageStats(user.sub);
 		}
 
-		return this.historyService.getHistory(user.sub);
+		const parsedLimit = limit ? Number(limit) : undefined;
+		return this.historyService.getHistory(user.sub, parsedLimit);
 	}
 
 	@UseGuards(JwtAuthGuard)

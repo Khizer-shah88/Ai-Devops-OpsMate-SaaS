@@ -54,6 +54,48 @@ model User {
   createdAt DateTime @default(now())
   requests  Request[]
   projects  Project[]
+  repoMemories RepoMemory[]
+}
+
+model RepoMemory {
+  id              String       @id @default(cuid())
+  userId          String
+  repoUrl         String
+  owner           String
+  repo            String
+  defaultBranch   String?
+  lastBranch      String?
+  cloudTarget     CloudTarget?
+  analysis        Json?
+  readiness       Json?
+  lastVersionId   String?
+  lastPrUrl       String?
+  lastPrNumber    Int?
+  lastActionsRunId String?
+  lastActionsStatus String?
+  notes           String?
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events RepoMemoryEvent[]
+
+  @@unique([userId, repoUrl], name: "repo_memory_user_repo_url")
+  @@index([userId, updatedAt], name: "repo_memory_user_updated_idx")
+}
+
+model RepoMemoryEvent {
+  id        String   @id @default(cuid())
+  memoryId  String
+  type      String
+  summary   String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  memory RepoMemory @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+
+  @@index([memoryId, createdAt], name: "repo_memory_event_memory_created_idx")
 }
 
 model Request {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Code2, Bug, GitBranch, Clock, Zap, Activity,
@@ -84,7 +85,13 @@ function StatCard({ label, value, icon: Icon, color, bg, border, glow, delay = 0
       {/* Progress bar */}
       <div className="h-1 rounded-full bg-border/60 overflow-hidden">
         <motion.div
-          className={cn('h-full rounded-full', color.replace('text-','bg-'))}
+          className={cn(
+            'h-full rounded-full',
+            color.includes('brand') && 'bg-brand',
+            color.includes('violet') && 'bg-violet-500',
+            color.includes('rose') && 'bg-rose-500',
+            color.includes('cyan') && 'bg-cyan-500',
+          )}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ delay: delay + 0.4, duration: 0.9, ease: 'easeOut' }}
@@ -98,9 +105,9 @@ function StatCard({ label, value, icon: Icon, color, bg, border, glow, delay = 0
 
 function TypeBadge({ type }: { type: string }) {
   const MAP: Record<string, { label: string; cls: string; icon: any }> = {
-    REVIEW: { label: 'Code Review', cls: 'bg-violet-500/10 text-violet-500 border-violet-500/20', icon: Code2    },
-    DEBUG:  { label: 'Debug',       cls: 'bg-rose-500/10  text-rose-500  border-rose-500/20',    icon: Bug      },
-    CICD:   { label: 'CI/CD',       cls: 'bg-cyan-500/10  text-cyan-500  border-cyan-500/20',    icon: GitBranch},
+    REVIEW: { label: 'Code Review', cls: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20', icon: Code2    },
+    DEBUG:  { label: 'Debug',       cls: 'bg-rose-500/10  text-rose-600 dark:text-rose-400  border-rose-500/20',    icon: Bug      },
+    CICD:   { label: 'CI/CD',       cls: 'bg-cyan-500/10  text-cyan-600 dark:text-cyan-400  border-cyan-500/20',    icon: GitBranch},
   };
   const { label, cls, icon: Icon } = MAP[type] ?? { label: type, cls: 'bg-secondary text-muted-foreground border-border', icon: Circle };
   return (
@@ -116,7 +123,11 @@ function Snippet({ type, input }: { type: string; input: Record<string, unknown>
   let text = '—';
   if (type === 'REVIEW') text = `${String(input.language ?? '').toUpperCase()} · ${String(input.code ?? '').slice(0, 55)}…`;
   if (type === 'DEBUG')  text = String(input.errorLog ?? '').slice(0, 75) + '…';
-  if (type === 'CICD')   text = `Stack: ${String(input.stack ?? '').toUpperCase()}`;
+  if (type === 'CICD') {
+    const repo = String(input.repoUrl ?? input.projectDescription ?? input.stackInfo ?? input.stack ?? '').trim();
+    const cloud = String(input.cloudTarget ?? input.cloudProvider ?? '').trim();
+    text = [repo, cloud].filter(Boolean).join(' · ') || 'CI/CD request';
+  }
   return <span className="text-[12px] text-muted-foreground font-mono truncate max-w-xs">{text}</span>;
 }
 
@@ -224,16 +235,16 @@ function ProfileMenu({ user, onLogout }: { user: { name?: string | null; email?:
 // ─── Stat config ──────────────────────────────────────────────────────────────
 
 const STATS = [
-  { key: 'total',  label: 'Total Requests',  icon: Activity,  color: 'text-brand-400',  bg: 'bg-brand-500/8',  border: 'border-brand-500/18',  glow: 'bg-brand-500/5'  },
-  { key: 'review', label: 'Code Reviews',    icon: Code2,     color: 'text-violet-500', bg: 'bg-violet-500/8', border: 'border-violet-500/18', glow: 'bg-violet-500/5' },
-  { key: 'debug',  label: 'Debug Sessions',  icon: Bug,       color: 'text-rose-500',   bg: 'bg-rose-500/8',   border: 'border-rose-500/18',   glow: 'bg-rose-500/5'   },
-  { key: 'cicd',   label: 'CI/CD Pipelines', icon: GitBranch, color: 'text-cyan-500',   bg: 'bg-cyan-500/8',   border: 'border-cyan-500/18',   glow: 'bg-cyan-500/5'   },
+  { key: 'total',  label: 'Total Requests',  icon: Activity,  color: 'text-brand',  bg: 'bg-brand/10',  border: 'border-brand/20',  glow: 'bg-brand/5'  },
+  { key: 'review', label: 'Code Reviews',    icon: Code2,     color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20', glow: 'bg-violet-500/5' },
+  { key: 'debug',  label: 'Debug Sessions',  icon: Bug,       color: 'text-rose-600 dark:text-rose-400',   bg: 'bg-rose-500/10',   border: 'border-rose-500/20',   glow: 'bg-rose-500/5'   },
+  { key: 'cicd',   label: 'CI/CD Pipelines', icon: GitBranch, color: 'text-cyan-600 dark:text-cyan-400',   bg: 'bg-cyan-500/10',   border: 'border-cyan-500/20',   glow: 'bg-cyan-500/5'   },
 ] as const;
 
 const ACTIONS = [
-  { href: '/code-review', icon: Code2,     label: 'Code Review',  desc: 'Analyze code with AI',         color: 'text-violet-500', bg: 'bg-violet-500/8', border: 'border-violet-500/20 hover:border-violet-500/40' },
-  { href: '/debug',       icon: Bug,       label: 'Debug Error',  desc: 'Diagnose any error log',        color: 'text-rose-500',   bg: 'bg-rose-500/8',   border: 'border-rose-500/20 hover:border-rose-500/40'     },
-  { href: '/cicd',        icon: GitBranch, label: 'CI/CD',        desc: 'Generate pipelines & Docker',   color: 'text-cyan-500',   bg: 'bg-cyan-500/8',   border: 'border-cyan-500/20 hover:border-cyan-500/40'     },
+  { href: '/code-review', icon: Code2,     label: 'Code Review',  desc: 'Analyze code with AI',         color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20 hover:border-violet-500/40' },
+  { href: '/debug',       icon: Bug,       label: 'Debug Error',  desc: 'Diagnose any error log',        color: 'text-rose-600 dark:text-rose-400',   bg: 'bg-rose-500/10',   border: 'border-rose-500/20 hover:border-rose-500/40'     },
+  { href: '/cicd',        icon: GitBranch, label: 'CI/CD',        desc: 'Generate pipelines & Docker',   color: 'text-cyan-600 dark:text-cyan-400',   bg: 'bg-cyan-500/10',   border: 'border-cyan-500/20 hover:border-cyan-500/40'     },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -241,8 +252,7 @@ const ACTIONS = [
 export default function DashboardPage() {
   const { clearAuth } = useAuthStore();
   const { user } = useRequireAuth();
-
-  const router = (typeof window !== 'undefined' ? require('next/navigation') : { useRouter: () => ({ push: () => {} }) }).useRouter?.() ?? { push: () => {} };
+  const router = useRouter();
 
   const [stats,      setStats]      = useState<UsageStats>({ total: 0, review: 0, debug: 0, cicd: 0 });
   const [history,    setHistory]    = useState<HistoryItem[]>([]);
@@ -250,6 +260,7 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [clearingAll, setClearingAll] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async (showSpin = false) => {
     if (showSpin) setRefreshing(true);
@@ -257,8 +268,10 @@ export default function DashboardPage() {
       const res = await historyApi.get({ limit: 8 });
       setStats(res.stats);
       setHistory(res.data);
+      setError(null);
     } catch (e) {
       console.error(e);
+      setError(e instanceof Error ? e.message : 'Failed to load dashboard data');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -279,7 +292,7 @@ export default function DashboardPage() {
     const route = routeMap[item.type];
     if (route) {
         if (item.type === 'REVIEW') {
-           localStorage.setItem('devmate_state_REVIEW', JSON.stringify({
+           localStorage.setItem('devmate_state_CODE_REVIEW', JSON.stringify({
              code: (item.input as any).code || '',
              language: (item.input as any).language || 'typescript',
              result: item.output
@@ -340,7 +353,7 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="px-4 sm:px-6 py-7 max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto space-y-1">
 
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 md:gap-6 mb-8 mt-2 md:mt-0">
@@ -392,6 +405,11 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-6">
+            {error && (
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
+                {error}
+              </div>
+            )}
 
             {/* ── Stat cards ───────────────────────────────────────────── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
@@ -437,7 +455,7 @@ export default function DashboardPage() {
                         type="button"
                         onClick={handleClearAll}
                         disabled={clearingAll || !!deletingId}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-colors disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-colors disabled:opacity-50"
                       >
                         <Trash2 className="w-3 h-3" />
                         {clearingAll ? 'Clearing...' : 'Clear All'}
@@ -493,7 +511,7 @@ export default function DashboardPage() {
                                   onClick={(e) => { e.stopPropagation(); handleDeleteOne(item.id); }}
                                   disabled={clearingAll || deletingId === item.id}
                                   title="Remove from history"
-                                  className="w-6 h-6 rounded-md flex items-center justify-center text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-50"
+                                  className="w-6 h-6 rounded-md flex items-center justify-center text-rose-600/70 dark:text-rose-400/70 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-50"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -562,7 +580,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-3.5 h-3.5 text-brand-400" />
                     <p className="text-[11px] font-bold text-brand-400 uppercase tracking-[0.08em]">AI Status</p>
-                    <span className="ml-auto flex items-center gap-1 text-[11px] text-emerald-400 font-semibold">
+                    <span className="ml-auto flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       Online
                     </span>

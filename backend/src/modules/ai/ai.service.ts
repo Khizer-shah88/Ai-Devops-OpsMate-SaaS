@@ -60,7 +60,7 @@ export class AiService {
 						baseURL?.includes('openrouter.ai')
 							? {
 								'HTTP-Referer': this.configService.get<string>('frontendUrl', { infer: true }) ?? 'http://localhost:3000',
-								'X-Title': 'DevMate AI',
+								'X-Title': 'DevMat AI',
 							}
 							: undefined,
 			  })
@@ -69,11 +69,7 @@ export class AiService {
 
 	async reviewCode(code: string, language: string): Promise<ReviewOutput> {
 		if (!this.client) {
-			return {
-				bugs: ['OPENAI_API_KEY is not configured. AI output is unavailable.'],
-				improvements: ['Set OPENAI_API_KEY to enable rich review insights.'],
-				optimizations: ['Use batched linting and static analysis for baseline checks.'],
-			};
+			return this.heuristicReview(code, language);
 		}
 
 		const prompt = [
@@ -84,20 +80,17 @@ export class AiService {
 			`Code:\n${code}`,
 		].join('\n\n');
 
-		return this.generateJson<ReviewOutput>(prompt);
+		try {
+			return await this.generateJson<ReviewOutput>(prompt);
+		} catch (error) {
+			console.error('AI review failed, using heuristic fallback:', error);
+			return this.heuristicReview(code, language);
+		}
 	}
 
 	async debugError(errorLog: string): Promise<DebugOutput> {
 		if (!this.client) {
-			return {
-				explanation: 'OPENAI_API_KEY is not configured, so AI debugging is disabled.',
-				rootCause: 'Missing OpenAI credentials in backend environment.',
-				fixSteps: [
-					'Set OPENAI_API_KEY in backend environment.',
-					'Restart backend service.',
-					'Retry the debug request.',
-				],
-			};
+			return this.heuristicDebug(errorLog);
 		}
 
 		const prompt = [
@@ -107,27 +100,19 @@ export class AiService {
 			`Error log:\n${errorLog}`,
 		].join('\n\n');
 
-		return this.generateJson<DebugOutput>(prompt);
+		try {
+			return await this.generateJson<DebugOutput>(prompt);
+		} catch (error) {
+			console.error('AI debug failed, using heuristic fallback:', error);
+			return this.heuristicDebug(errorLog);
+		}
 	}
 
-		async generateCicd(payload: CicdPayload): Promise<CicdOutput> {
+	async generateCicd(payload: CicdPayload): Promise<CicdOutput> {
 		const action = this.normalizeAction(payload.actionType);
 
 		if (!this.client) {
-			return this.normalizeCicdOutput(
-			{
-				dockerfile: 'FROM node:20-alpine\nWORKDIR /app\nCOPY . .\nRUN npm ci\nCMD ["npm","start"]',
-				dockerCompose: 'version: "3"\nservices:\n  app:\n    build: .\n    ports:\n      - "3000:3000"\n',
-				githubActions: 'name: CI\non: [push]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n',
-				kubernetes: 'apiVersion: apps/v1\nkind: Deployment\n...',
-				env: 'PORT=3000\nNODE_ENV=production',
-				validation: 'No validation issues found in the provided configuration. Add existing config to perform a deeper analysis.',
-				explanation: 'This setup packages your app into containers, orchestrates services with docker-compose, and automates CI with GitHub Actions.',
-				setupInstructions: '1. Configure env\n2. Run docker-compose up',
-			},
-			action,
-			payload,
-			);
+			return this.normalizeCicdOutput(this.heuristicCicdTemplates(payload), action, payload);
 		}
 
 		const prompt = [
@@ -174,8 +159,321 @@ export class AiService {
 			'Response must contain meaningful content for the selected action and must not be empty.'
 		].join('\n');
 
-		const raw = await this.generateJson<Partial<CicdOutput>>(prompt);
-		return this.normalizeCicdOutput(raw, action, payload);
+		try {
+			const raw = await this.generateJson<Partial<CicdOutput>>(prompt);
+			return this.normalizeCicdOutput(raw, action, payload);
+		} catch (error) {
+			console.error('AI CI/CD generation failed, using heuristic templates:', error);
+			return this.normalizeCicdOutput(this.heuristicCicdTemplates(payload), action, payload);
+		}
+	}
+
+	private heuristicCicdTemplates(payload: CicdPayload): Partial<CicdOutput> {
+		const stack = payload.stackInfo || payload.projectDescription || 'Node.js application';
+		const cloud = payload.cloudProvider || 'local';
+		return {
+			dockerfile: [
+				'FROM node:20-alpine AS deps',
+				'WORKDIR /app',
+				'COPY package*.json ./',
+				'RUN npm ci',
+				'',
+				'FROM node:20-alpine AS builder',
+				'WORKDIR /app',
+				'COPY --from=deps /app/node_modules ./node_modules',
+				'COPY . .',
+				'RUN npm run build || true',
+				'',
+				'FROM node:20-alpine AS runner',
+				'WORKDIR /app',
+				'ENV NODE_ENV=production',
+				'COPY --from=builder /app ./',
+				'EXPOSE 3000',
+				'CMD ["npm", "start"]',
+			].join('\n'),
+			dockerCompose: [
+				'services:',
+				'  app:',
+				'    build: .',
+				'    ports:',
+				'      - "3000:3000"',
+				'    environment:',
+				'      NODE_ENV: production',
+				'      PORT: 3000',
+				'    restart: unless-stopped',
+				'    healthcheck:',
+				'      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]',
+				'      interval: 20s',
+				'      timeout: 5s',
+				'      retries: 5',
+			].join('\n'),
+			githubActions: [
+				'name: CI',
+				'on:',
+				'  push:',
+				'    branches: [main]',
+				'  pull_request:',
+				'jobs:',
+				'  build:',
+				'    runs-on: ubuntu-latest',
+				'    steps:',
+				'      - uses: actions/checkout@v4',
+				'      - uses: actions/setup-node@v4',
+				'        with:',
+				'          node-version: 20',
+				'          cache: npm',
+				'      - run: npm ci',
+				'      - run: npm test --if-present',
+				'      - run: npm run build --if-present',
+			].join('\n'),
+			kubernetes: [
+				'apiVersion: apps/v1',
+				'kind: Deployment',
+				'metadata:',
+				'  name: app',
+				'spec:',
+				'  replicas: 2',
+				'  selector:',
+				'    matchLabels:',
+				'      app: app',
+				'  template:',
+				'    metadata:',
+				'      labels:',
+				'        app: app',
+				'    spec:',
+				'      containers:',
+				'        - name: app',
+				'          image: app:latest',
+				'          ports:',
+				'            - containerPort: 3000',
+				'          readinessProbe:',
+				'            httpGet:',
+				'              path: /',
+				'              port: 3000',
+			].join('\n'),
+			env: 'PORT=3000\nNODE_ENV=production',
+			validation: this.heuristicValidation(payload),
+			explanation: [
+				`Generated production-oriented templates for ${stack}.`,
+				`Target environment hint: ${cloud}.`,
+				'Docker multi-stage build, compose healthcheck, GitHub Actions CI, and a basic Kubernetes deployment are included.',
+			].join('\n'),
+			setupInstructions: [
+				'1. Save Dockerfile, compose, and workflow files into the repository.',
+				'2. Set required secrets in GitHub Actions.',
+				'3. Validate with `docker compose config` and a feature-branch CI run.',
+			].join('\n'),
+		};
+	}
+
+	private heuristicReview(code: string, language: string): ReviewOutput {
+		const bugs: string[] = [];
+		const improvements: string[] = [];
+		const optimizations: string[] = [];
+		const lines = code.split(/\r?\n/);
+		const lower = code.toLowerCase();
+
+		if (!code.trim()) {
+			return {
+				bugs: ['No code was provided for review.'],
+				improvements: ['Paste a code snippet to receive actionable findings.'],
+				optimizations: [],
+			};
+		}
+
+		lines.forEach((line, index) => {
+			const n = index + 1;
+			if (/eval\s*\(/.test(line)) {
+				bugs.push(`Line ${n}: Avoid eval(); it enables code injection.`);
+			}
+			if (/innerHTML\s*=/.test(line) && !/DOMPurify|sanitize/i.test(line)) {
+				bugs.push(`Line ${n}: Assigning to innerHTML without sanitization risks XSS.`);
+			}
+			if (/password\s*=\s*['"][^'"]+['"]/i.test(line) || /api[_-]?key\s*=\s*['"][^'"]+['"]/i.test(line)) {
+				bugs.push(`Line ${n}: Hardcoded secret detected; move credentials to environment variables.`);
+			}
+			if (/catch\s*\([^)]*\)\s*\{\s*\}/.test(line) || /catch\s*\{\s*\}/.test(line)) {
+				bugs.push(`Line ${n}: Empty catch block swallows errors; log or rethrow.`);
+			}
+			if (/console\.(log|debug|info)\s*\(/.test(line)) {
+				improvements.push(`Line ${n}: Replace console logging with a structured logger in production paths.`);
+			}
+			if (/any\b/.test(line) && /typescript|ts|tsx/i.test(language)) {
+				improvements.push(`Line ${n}: Prefer a concrete type over \`any\` for safer refactoring.`);
+			}
+			if (/TODO|FIXME|HACK/.test(line)) {
+				improvements.push(`Line ${n}: Resolve outstanding ${line.match(/TODO|FIXME|HACK/)?.[0]} marker before shipping.`);
+			}
+			if (/SELECT\s+\*\s+FROM/i.test(line)) {
+				optimizations.push(`Line ${n}: Prefer explicit column lists instead of SELECT * for clearer contracts and less IO.`);
+			}
+			if (/for\s*\(\s*let\s+\w+\s*=\s*0/.test(line) && /length/.test(code)) {
+				optimizations.push(`Line ${n}: Consider map/filter/reduce or cached length for hot loops when readability allows.`);
+			}
+		});
+
+		if (/var\s+\w+/.test(code) && /javascript|typescript|js|ts/i.test(language)) {
+			improvements.push('Prefer const/let over var to avoid function-scoped leakage.');
+		}
+		if (!/try\s*\{/.test(code) && /(fetch|axios|http|await)/i.test(code)) {
+			improvements.push('Async/network calls appear without try/catch; add explicit error handling.');
+		}
+		if (/password|token|secret/i.test(lower) && !/process\.env|getenv|configservice/i.test(lower)) {
+			improvements.push('Sensitive identifiers appear without env/config usage; confirm secrets are never committed.');
+		}
+		if (lines.length > 120) {
+			optimizations.push('Large snippet detected; split into smaller pure functions for easier testing and review.');
+		}
+		if (bugs.length === 0) {
+			bugs.push('No high-confidence defect patterns matched in this snippet.');
+		}
+		if (improvements.length === 0) {
+			improvements.push(`Add unit tests covering happy path and failure cases for this ${language} code.`);
+		}
+		if (optimizations.length === 0) {
+			optimizations.push('Profile hot paths and add input validation at trust boundaries.');
+		}
+
+		return {
+			bugs: bugs.slice(0, 12),
+			improvements: improvements.slice(0, 12),
+			optimizations: optimizations.slice(0, 12),
+		};
+	}
+
+	private heuristicDebug(errorLog: string): DebugOutput {
+		const log = errorLog.trim();
+		if (!log) {
+			return {
+				explanation: 'No error log was provided.',
+				rootCause: 'Empty input',
+				fixSteps: ['Paste the full stack trace or error message and retry.'],
+			};
+		}
+
+		const patterns: Array<{ match: RegExp; explanation: string; rootCause: string; steps: string[] }> = [
+			{
+				match: /ECONNREFUSED|connect ECONNREFUSED/i,
+				explanation: 'The process tried to open a TCP connection and the target refused it, usually because the dependency is down or the host/port is wrong.',
+				rootCause: 'Upstream service unreachable on the configured host/port',
+				steps: [
+					'Confirm the dependency (DB, Redis, API) is running.',
+					'Verify host/port in env vars match the live service.',
+					'Check firewall/docker network connectivity between services.',
+					'Retry after the dependency healthcheck is green.',
+				],
+			},
+			{
+				match: /ENOTFOUND|getaddrinfo/i,
+				explanation: 'DNS resolution failed for a hostname referenced by the application.',
+				rootCause: 'Invalid or unreachable hostname',
+				steps: [
+					'Validate the hostname spelling in configuration.',
+					'Check local DNS / container DNS settings.',
+					'Use an IP or service name that exists on the current network.',
+				],
+			},
+			{
+				match: /EADDRINUSE|address already in use/i,
+				explanation: 'The server attempted to bind a port that is already occupied.',
+				rootCause: 'Port conflict',
+				steps: [
+					'Identify the process holding the port and stop it, or choose another PORT.',
+					'Ensure only one instance of the service is running locally.',
+				],
+			},
+			{
+				match: /JWT|unauthorized|401|invalid token|TokenExpired/i,
+				explanation: 'Authentication failed while validating a bearer/session token.',
+				rootCause: 'Missing, expired, or incorrectly signed JWT/credentials',
+				steps: [
+					'Log in again to obtain a fresh access token.',
+					'Confirm JWT_SECRET and issuer/audience match between issuer and verifier.',
+					'Ensure the Authorization header uses `Bearer <token>`.',
+				],
+			},
+			{
+				match: /Prisma|P1001|P2021|P2002|migration/i,
+				explanation: 'A database access or schema mismatch error was raised by Prisma/Postgres.',
+				rootCause: 'Database connectivity or schema drift',
+				steps: [
+					'Verify DATABASE_URL and that Postgres is reachable.',
+					'Run `npx prisma migrate deploy` to align schema.',
+					'Inspect unique constraints if this is a duplicate-key (P2002) failure.',
+				],
+			},
+			{
+				match: /Cannot find module|MODULE_NOT_FOUND/i,
+				explanation: 'Node could not resolve a required package or local file.',
+				rootCause: 'Missing dependency or incorrect import path',
+				steps: [
+					'Run `npm ci` / `npm install` in the package that failed.',
+					'Confirm the import path and that the file exists after build.',
+					'Rebuild if the missing module is a compile output.',
+				],
+			},
+			{
+				match: /TypeError:\s*Cannot read propert(y|ies) of (undefined|null)/i,
+				explanation: 'Code accessed a property on a null/undefined value.',
+				rootCause: 'Missing null-check on optional data',
+				steps: [
+					'Inspect the stack frame line and guard optional values.',
+					'Validate API/DB responses before nested property access.',
+					'Add a regression test for the empty/partial payload case.',
+				],
+			},
+			{
+				match: /OutOfMemory|JavaScript heap out of memory|ENOMEM/i,
+				explanation: 'The process exhausted available memory while handling the workload.',
+				rootCause: 'Memory pressure / unbounded allocation',
+				steps: [
+					'Raise Node heap only as a temporary mitigation (`NODE_OPTIONS=--max-old-space-size`).',
+					'Stream large payloads instead of buffering entire files in memory.',
+					'Look for leaks in caches, event listeners, or unbounded arrays.',
+				],
+			},
+			{
+				match: /CORS|Not allowed by CORS/i,
+				explanation: 'The browser blocked a cross-origin request based on server CORS policy.',
+				rootCause: 'Frontend origin not allow-listed by the API',
+				steps: [
+					'Add the frontend origin to FRONTEND_URL / CORS_ORIGINS.',
+					'Restart the API after updating CORS configuration.',
+					'Confirm the browser is calling the expected API base URL.',
+				],
+			},
+			{
+				match: /timeout|ETIMEDOUT|TimeoutError/i,
+				explanation: 'An operation exceeded its allotted time waiting for a response.',
+				rootCause: 'Slow or hung dependency / insufficient timeout budget',
+				steps: [
+					'Identify which call timed out from the stack/log context.',
+					'Check dependency latency and connection pools.',
+					'Increase timeout only after confirming the dependency is healthy.',
+				],
+			},
+		];
+
+		const hit = patterns.find((pattern) => pattern.match.test(log));
+		if (hit) {
+			return {
+				explanation: hit.explanation,
+				rootCause: hit.rootCause,
+				fixSteps: hit.steps,
+			};
+		}
+
+		const firstLine = log.split(/\r?\n/).map((l) => l.trim()).find(Boolean) ?? 'Unknown error';
+		return {
+			explanation: `Heuristic analysis of the provided log. Leading signal: ${firstLine.slice(0, 240)}`,
+			rootCause: 'Unrecognized error pattern — needs stack-context correlation',
+			fixSteps: [
+				'Capture the full stack trace including the first application frame.',
+				'Reproduce with the same env vars and input payload.',
+				'Search logs for the same error code around the failure timestamp.',
+				'Add OPENAI_API_KEY for deeper LLM-assisted diagnosis when heuristics are insufficient.',
+			],
+		};
 	}
 
 	private normalizeAction(actionType?: string): CicdAction {

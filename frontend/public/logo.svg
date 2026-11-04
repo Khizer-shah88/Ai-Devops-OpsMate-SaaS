@@ -1,0 +1,34 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="dmStroke" x1="18" y1="18" x2="110" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563EB"/>
+      <stop offset="0.55" stop-color="#0EA5E9"/>
+      <stop offset="1" stop-color="#2DD4BF"/>
+    </linearGradient>
+    <linearGradient id="dmCore" x1="44" y1="44" x2="84" y2="84" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer rounded ring / connection mark -->
+  <path
+    d="M40 28
+       H78
+       C94 28 104 38 104 54
+       V74
+       C104 90 94 100 78 100
+       H50
+       C34 100 24 90 24 74
+       V58"
+    stroke="url(#dmStroke)"
+    stroke-width="14"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+
+  <!-- Inner node -->
+  <circle cx="64" cy="64" r="10" fill="url(#dmCore)"/>
+  <circle cx="64" cy="64" r="4.5" fill="#04101A"/>
+</svg>

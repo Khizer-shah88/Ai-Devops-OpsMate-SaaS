@@ -15,6 +15,11 @@ import {
   OnboardRepoResult,
   LatestBundleResponse,
   RepoReadinessResult,
+  RepoDiffResult,
+  ApplyPrResult,
+  ActionsRun,
+  ActionsDebugResult,
+  RepoMemory,
 } from "./types";
 import type {
   CicdResult as RichCicdResult,
@@ -230,6 +235,59 @@ export const apiClient = {
     const { data } = await api.post<OnboardRepoResult>("/devops/onboard-repo", payload);
     return data;
   },
+
+  async diffGithub(payload: {
+    repoUrl: string;
+    branch?: string;
+    files: Array<{ path: string; content: string }>;
+  }): Promise<RepoDiffResult> {
+    const { data } = await api.post<RepoDiffResult>("/devops/github/diff", payload);
+    return data;
+  },
+
+  async applyPullRequest(payload: {
+    repoUrl: string;
+    baseBranch?: string;
+    headBranch?: string;
+    title?: string;
+    body?: string;
+    versionId?: string;
+    files: Array<{ path: string; content: string }>;
+  }): Promise<ApplyPrResult> {
+    const { data } = await api.post<ApplyPrResult>("/devops/github/apply-pr", payload);
+    return data;
+  },
+
+  async listActionRuns(repoUrl: string, branch?: string, limit = 10): Promise<{ runs: ActionsRun[] }> {
+    const params = new URLSearchParams({
+      repoUrl,
+      limit: String(limit),
+      ...(branch ? { branch } : {}),
+    });
+    const { data } = await api.get<{ runs: ActionsRun[] }>(`/devops/github/actions/runs?${params.toString()}`);
+    return data;
+  },
+
+  async debugActions(payload: {
+    repoUrl: string;
+    branch?: string;
+    runId?: string;
+  }): Promise<ActionsDebugResult> {
+    const { data } = await api.post<ActionsDebugResult>("/devops/github/actions/debug", payload);
+    return data;
+  },
+
+  async listRepoMemory(limit = 20): Promise<RepoMemory[]> {
+    const { data } = await api.get<RepoMemory[]>(`/devops/repo-memory?limit=${limit}`);
+    return data;
+  },
+
+  async getRepoMemory(repoUrl: string): Promise<RepoMemory> {
+    const { data } = await api.get<RepoMemory>(
+      `/devops/repo-memory/by-repo?repoUrl=${encodeURIComponent(repoUrl)}`,
+    );
+    return data;
+  },
 };
 
 export const authApi = {
@@ -303,8 +361,14 @@ export const cicdApi = {
 };
 
 export const historyApi = {
-  async get(_params?: { limit?: number }): Promise<{ stats: DashboardUsageStats; data: HistoryItem[] }> {
-    const [stats, history] = await Promise.all([apiClient.getStats(), apiClient.getHistory()]);
+  async get(params?: { limit?: number }): Promise<{ stats: DashboardUsageStats; data: HistoryItem[] }> {
+    const limit = params?.limit && params.limit > 0 ? params.limit : undefined;
+    const historyPath = limit ? `/history?limit=${limit}` : "/history";
+
+    const [stats, historyResponse] = await Promise.all([
+      apiClient.getStats(),
+      api.get<RequestRecord[]>(historyPath),
+    ]);
 
     const mappedStats: DashboardUsageStats = {
       total: stats.totalRequests,
@@ -313,7 +377,7 @@ export const historyApi = {
       cicd: stats.byType.cicd,
     };
 
-    const mappedHistory: HistoryItem[] = history.map((item) => ({
+    const mappedHistory: HistoryItem[] = historyResponse.data.map((item) => ({
       id: item.id,
       type: (item.type.toUpperCase() as "REVIEW" | "DEBUG" | "CICD"),
       input: (item.input as Record<string, unknown>) ?? {},
@@ -351,4 +415,10 @@ export const devopsApi = {
   connectGithub: apiClient.connectGithub,
   disconnectGithub: apiClient.disconnectGithub,
   listGithubRepos: apiClient.listGithubRepos,
+  diffGithub: apiClient.diffGithub,
+  applyPullRequest: apiClient.applyPullRequest,
+  listActionRuns: apiClient.listActionRuns,
+  debugActions: apiClient.debugActions,
+  listRepoMemory: apiClient.listRepoMemory,
+  getRepoMemory: apiClient.getRepoMemory,
 };

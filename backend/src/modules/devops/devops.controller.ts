@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Redirect, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Redirect, UseGuards } from '@nestjs/common';
 import { DevopsService } from './devops.service';
 import { AnalyzePackageDto } from './dto/analyze-package.dto';
 import { GenerateInfraDto } from './dto/generate-infra.dto';
@@ -7,6 +7,12 @@ import { LogAnalyzerDto } from './dto/log-analyzer.dto';
 import { AnalyzeRepoDto } from './dto/analyze-repo.dto';
 import { GithubConnectDto } from './dto/github-connect.dto';
 import { OnboardRepoDto } from './dto/onboard-repo.dto';
+import { GithubDiffDto } from './dto/github-diff.dto';
+import { ApplyPrDto } from './dto/apply-pr.dto';
+import { ActionsDebugDto } from './dto/actions-debug.dto';
+import { UpsertRepoMemoryDto } from './dto/repo-memory.dto';
+import { GithubOpsService } from './github-ops.service';
+import { RepoMemoryService } from './repo-memory.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtUser } from '../../common/decorators/current-user.decorator';
@@ -14,7 +20,11 @@ import type { JwtUser } from '../../common/decorators/current-user.decorator';
 @Controller('devops')
 @UseGuards(JwtAuthGuard)
 export class DevopsController {
-  constructor(private readonly devopsService: DevopsService) {}
+  constructor(
+    private readonly devopsService: DevopsService,
+    private readonly githubOps: GithubOpsService,
+    private readonly repoMemory: RepoMemoryService,
+  ) {}
 
   @Get('github/oauth/start')
   getGithubOauthUrl(@CurrentUser() user: JwtUser, @Query('redirectPath') redirectPath?: string) {
@@ -90,8 +100,48 @@ export class DevopsController {
   }
 
   @Get('chat/:id')
-  getChat(@Param('id') id: string) {
-    return this.devopsService.getChat(id);
+  getChat(@CurrentUser() user: JwtUser, @Param('id') id: string) {
+    return this.devopsService.getChat(user.sub, id);
+  }
+
+  @Post('github/diff')
+  diffGithub(@CurrentUser() user: JwtUser, @Body() dto: GithubDiffDto) {
+    return this.githubOps.diffAgainstRepo(user.sub, dto);
+  }
+
+  @Post('github/apply-pr')
+  applyPullRequest(@CurrentUser() user: JwtUser, @Body() dto: ApplyPrDto) {
+    return this.githubOps.applyPullRequest(user.sub, dto);
+  }
+
+  @Get('github/actions/runs')
+  listActionRuns(
+    @CurrentUser() user: JwtUser,
+    @Query('repoUrl') repoUrl: string,
+    @Query('branch') branch?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.githubOps.listActionRuns(user.sub, repoUrl, branch, Number(limit || 10));
+  }
+
+  @Post('github/actions/debug')
+  debugActions(@CurrentUser() user: JwtUser, @Body() dto: ActionsDebugDto) {
+    return this.githubOps.debugLatestAction(user.sub, dto);
+  }
+
+  @Get('repo-memory')
+  listRepoMemory(@CurrentUser() user: JwtUser, @Query('limit') limit?: string) {
+    return this.repoMemory.list(user.sub, Number(limit || 20));
+  }
+
+  @Get('repo-memory/by-repo')
+  getRepoMemory(@CurrentUser() user: JwtUser, @Query('repoUrl') repoUrl: string) {
+    return this.repoMemory.getByRepo(user.sub, repoUrl);
+  }
+
+  @Put('repo-memory')
+  upsertRepoMemory(@CurrentUser() user: JwtUser, @Body() dto: UpsertRepoMemoryDto) {
+    return this.repoMemory.upsert(user.sub, dto);
   }
 }
 

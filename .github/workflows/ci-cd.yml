@@ -1,4 +1,4 @@
-name: OpsMate CI-CD
+name: DevMat CI-CD
 
 on:
   push:

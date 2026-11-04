@@ -279,12 +279,12 @@ export default function CodeReviewPage() {
 
   return (
     <AppShell>
-      <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-7 max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto space-y-5 sm:space-y-7">
 
-        <div className="flex items-start justify-between mb-5 sm:mb-7">
+        <div className="flex items-start justify-between gap-4">
           <PageHeader icon={Code2} title="AI Code Review"
             description="Submit your code for instant bug detection, improvements, and optimizations." badge="GPT-4" />
-          <ThemeToggle />
+          <ThemeToggle className="flex-shrink-0" />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5">
@@ -364,8 +364,8 @@ export default function CodeReviewPage() {
               {error && (
                 <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                   className="flex items-start gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-red-500/8 border border-red-500/15">
-                  <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-[12px] sm:text-[13px] text-red-400">{error}</p>
+                  <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-[12px] sm:text-[13px] text-red-600 dark:text-red-400">{error}</p>
                 </motion.div>
               )}
             </AnimatePresence>
